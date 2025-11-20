@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.PasswordField?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<AnchorPane prefHeight="600.0" prefWidth="800.0" styleClass="base" stylesheets="@server-management.css" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <!-- Decorative side panels -->
+        <AnchorPane layoutX="442.0" layoutY="-8.0" prefHeight="80.0" prefWidth="240.0" rotate="41.6" styleClass="side" AnchorPane.rightAnchor="-108.0" AnchorPane.topAnchor="-8.0" />
+        <AnchorPane layoutX="-106.0" layoutY="540.0" prefHeight="80.0" prefWidth="240.0" rotate="41.6" styleClass="side" AnchorPane.bottomAnchor="-50.0" AnchorPane.leftAnchor="-90.0" />
+
+        <!-- Close button -->
+        <Button fx:id="closeBtn" mnemonicParsing="false" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <graphic>
+                <SVGPath content="M3.726563 3.023438L3.023438 3.726563L7.292969 8L3.023438 12.269531L3.726563 12.980469L8 8.707031L12.269531 12.980469L12.980469 12.269531L8.707031 8L12.980469 3.726563L12.269531 3.023438L8 7.292969Z" styleClass="btn-shape" />
+            </graphic>
+        </Button>
+
+        <!-- Main content with ScrollPane -->
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="scroll-pane" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="40.0" AnchorPane.rightAnchor="40.0" AnchorPane.topAnchor="40.0">
+            <content>
+                <VBox alignment="TOP_CENTER" spacing="20.0">
+                    <children>
+                        <!-- Title -->
+                        <Label styleClass="title-label" text="Server Management" />
+
+                        <!-- Servers Table -->
+                        <VBox spacing="10.0">
+                            <children>
+                                <Label styleClass="section-label" text="Servers List" />
+                                <TableView fx:id="serversTable" prefHeight="200.0" styleClass="servers-table">
+                                    <columns>
+                                        <TableColumn fx:id="nameColumn" prefWidth="200.0" text="Server Name" />
+                                        <TableColumn fx:id="hostColumn" prefWidth="300.0" text="Host / IP Address" />
+                                        <TableColumn fx:id="portColumn" prefWidth="100.0" text="Port" />
+                                    </columns>
+                                </TableView>
+                            </children>
+                        </VBox>
+
+                        <!-- Server Details Form -->
+                        <VBox spacing="15.0" styleClass="form-container">
+                            <children>
+                                <Label styleClass="section-label" text="Server Details" />
+
+                                <!-- Server Name -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="Server Name: *" />
+                                        <TextField fx:id="nameField" promptText="e.g., PROD-SERVER-01" styleClass="field-input" />
+                                    </children>
+                                </VBox>
+
+                                <!-- Host / IP -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="Host / IP Address: *" />
+                                        <TextField fx:id="hostField" promptText="e.g., 192.168.1.100 or server.example.com" styleClass="field-input" />
+                                    </children>
+                                </VBox>
+
+                                <!-- Port -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="SSH Port:" />
+                                        <TextField fx:id="portField" text="22" promptText="Default: 22" styleClass="field-input" />
+                                    </children>
+                                </VBox>
+
+                                <!-- Username -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="SSH Username: *" />
+                                        <TextField fx:id="usernameField" promptText="e.g., root or admin" styleClass="field-input" />
+                                    </children>
+                                </VBox>
+
+                                <!-- Password -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="SSH Password:" />
+                                        <PasswordField fx:id="passwordField" promptText="SSH password (optional if using keys)" styleClass="field-input" />
+                                    </children>
+                                </VBox>
+
+                                <!-- Required fields note -->
+                                <Label styleClass="note-label" text="* Required fields" />
+                            </children>
+                        </VBox>
+
+                        <!-- Action Buttons -->
+                        <HBox alignment="CENTER" spacing="15.0">
+                            <children>
+                                <Button fx:id="addBtn" styleClass="action-btn, add-btn" text="Add Server" />
+                                <Button fx:id="updateBtn" styleClass="action-btn, update-btn" text="Update" />
+                                <Button fx:id="deleteBtn" styleClass="action-btn, delete-btn" text="Delete" />
+                                <Button fx:id="clearBtn" styleClass="action-btn, clear-btn" text="Clear" />
+                            </children>
+                            <VBox.margin>
+                                <Insets top="10.0" />
+                            </VBox.margin>
+                        </HBox>
+
+                        <!-- Close Button -->
+                        <HBox alignment="CENTER">
+                            <children>
+                                <Button fx:id="closeDialogBtn" styleClass="action-btn, close-dialog-btn" text="Close" />
+                            </children>
+                            <VBox.margin>
+                                <Insets top="10.0" />
+                            </VBox.margin>
+                        </HBox>
+                    </children>
+                    <padding>
+                        <Insets bottom="20.0" />
+                    </padding>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </children>
+</AnchorPane>

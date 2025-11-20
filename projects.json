@@ -1,0 +1,9 @@
+[ {
+  "id" : "b9e3fc89-f86c-40ae-a616-77fd98123858",
+  "name" : "CaeEsercente",
+  "localJarPath" : "C:\\eclipse\\workspace2\\Trunk_CaeEsercente\\dist",
+  "localJspPath" : "C:\\eclipse\\workspace2\\Trunk_CaeEsercente\\web_app_Intranet\\SM",
+  "remoteJarPath" : "/nodel/testUpload",
+  "remoteJspPath" : "/nodel/testUpload",
+  "buildFilePath" : "C:\\eclipse\\workspace2\\Trunk_CaeEsercente\\build_ejb3+2.xml"
+} ]

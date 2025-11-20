@@ -1,0 +1,34 @@
+.base{
+    -fx-background-color: #002E62;
+}
+
+.side{
+    -fx-background-color: #06603A;
+}
+
+.label{
+    -fx-text-fill: #ffffff;
+    -fx-font-size: 38;
+}
+
+.button{
+    -fx-min-width: 46;
+    -fx-max-width: 46;
+    -fx-pref-width: 46;
+    -fx-min-height: 26;
+    -fx-pref-height: 26;
+    -fx-max-height: 26;
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
+    -fx-background-color: transparent;
+}
+
+.btn-shape{
+    -fx-fill: #ffffff;
+}
+
+.hit-close-btn,
+.button:hover{
+    -fx-background-color: #C42B1C;
+}

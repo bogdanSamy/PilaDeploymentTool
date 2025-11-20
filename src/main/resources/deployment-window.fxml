@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.shape.SVGPath?>
+<?import io.github.palexdev.materialfx.controls.MFXButton?>
+
+<VBox prefHeight="800.0" prefWidth="1000.0" stylesheets="@deployment-window.css"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1">
+
+    <!-- Title Bar with Emphasis Color -->
+    <AnchorPane styleClass="title-bar" minHeight="40.0" maxHeight="40.0" prefHeight="40.0">
+        <HBox alignment="CENTER_LEFT" spacing="8" AnchorPane.leftAnchor="8.0"
+              AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0">
+            <ImageView fx:id="iconView" fitHeight="20.0" fitWidth="20.0"
+                       pickOnBounds="true" preserveRatio="true">
+                <Image url="@icon.png" />
+            </ImageView>
+            <Label fx:id="title" styleClass="title" text="Deployment Manager" />
+        </HBox>
+
+        <HBox alignment="CENTER_RIGHT" spacing="0"
+              AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0">
+            <Button fx:id="minBtn" mnemonicParsing="false" styleClass="hit-btn, minimize-btn">
+                <graphic>
+                    <SVGPath content="M1 7L1 8L14 8L14 7Z" styleClass="shape" />
+                </graphic>
+            </Button>
+            <Button fx:id="maxBtn" mnemonicParsing="false" styleClass="hit-btn, maximize-btn">
+                <graphic>
+                    <SVGPath fx:id="maxShape" styleClass="shape" />
+                </graphic>
+            </Button>
+            <Button fx:id="closeBtn" mnemonicParsing="false" styleClass="hit-btn, close-btn">
+                <graphic>
+                    <SVGPath content="M3.726563 3.023438L3.023438 3.726563L7.292969 8L3.023438 12.269531L3.726563 12.980469L8 8.707031L12.269531 12.980469L12.980469 12.269531L8.707031 8L12.980469 3.726563L12.269531 3.023438L8 7.292969Z" styleClass="shape" />
+                </graphic>
+            </Button>
+        </HBox>
+    </AnchorPane>
+
+    <!-- Content Area -->
+    <ScrollPane fitToWidth="true" styleClass="content-scroll" VBox.vgrow="ALWAYS">
+        <VBox styleClass="content-container" spacing="20">
+            <padding>
+                <Insets top="20" bottom="20" left="30" right="30"/>
+            </padding>
+
+            <!-- Header Section - Clean without labels -->
+            <HBox spacing="15" alignment="CENTER_LEFT">
+                <!-- Project Card -->
+                <VBox styleClass="info-card-simple" spacing="5" HBox.hgrow="ALWAYS">
+                    <Label fx:id="projectNameLabel" styleClass="card-title-clean" text="Loading..." wrapText="true" />
+                </VBox>
+
+                <!-- Server Card -->
+                <VBox styleClass="info-card-simple" spacing="5" HBox.hgrow="ALWAYS">
+                    <Label fx:id="serverNameLabel" styleClass="card-title-clean" text="Loading..." wrapText="true" />
+                </VBox>
+
+                <!-- Single Change Button -->
+                <MFXButton fx:id="changeBtn" text="Change" styleClass="change-btn-large"
+                           prefWidth="100" prefHeight="50" />
+            </HBox>
+
+            <!-- JAR Files Section -->
+            <VBox styleClass="file-section">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="JAR Files" styleClass="section-title" HBox.hgrow="ALWAYS" />
+                    <Label fx:id="jarCountLabel" styleClass="count-label" text="0 / 0 selected" />
+                </HBox>
+                <TitledPane fx:id="jarSection" text="Click to expand" styleClass="file-dropdown" animated="true">
+                    <ScrollPane fitToWidth="true" maxHeight="300" styleClass="file-scroll">
+                        <VBox fx:id="jarListContainer" spacing="5" styleClass="file-list">
+                            <padding>
+                                <Insets top="10" bottom="10" left="10" right="10"/>
+                            </padding>
+                        </VBox>
+                    </ScrollPane>
+                </TitledPane>
+            </VBox>
+
+            <!-- JSP Files Section -->
+            <VBox styleClass="file-section">
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label text="JSP Files" styleClass="section-title" HBox.hgrow="ALWAYS" />
+                    <Label fx:id="jspCountLabel" styleClass="count-label" text="0 / 0 selected" />
+                </HBox>
+                <TitledPane fx:id="jspSection" text="Click to expand" styleClass="file-dropdown" animated="true">
+                    <VBox spacing="10">
+                        <!-- Search Field Inside Dropdown -->
+                        <TextField fx:id="jspSearchField" promptText="🔍 Search JSP files..." styleClass="search-field" />
+
+                        <!-- JSP Files List -->
+                        <ScrollPane fitToWidth="true" maxHeight="280" styleClass="file-scroll">
+                            <VBox fx:id="jspListContainer" spacing="5" styleClass="file-list">
+                                <padding>
+                                    <Insets top="10" bottom="10" left="10" right="10"/>
+                                </padding>
+                            </VBox>
+                        </ScrollPane>
+                    </VBox>
+                </TitledPane>
+            </VBox>
+
+            <!-- Action Buttons Section -->
+            <VBox spacing="15">
+                <!-- Server Control -->
+                <HBox spacing="15" alignment="CENTER">
+                    <MFXButton fx:id="restartServerBtn" text="🔄 Restart Server"
+                               styleClass="danger-button" prefWidth="200" prefHeight="50" />
+                </HBox>
+
+                <!-- Main Actions -->
+                <HBox spacing="15" alignment="CENTER">
+                    <MFXButton fx:id="downloadLogsBtn" text="📥 Download Logs"
+                               styleClass="action-button" prefWidth="150" prefHeight="45" />
+                    <MFXButton fx:id="buildProjectBtn" text="🔨 Build Project"
+                               styleClass="action-button" prefWidth="150" prefHeight="45" />
+                    <MFXButton fx:id="openBrowserBtn" text="🌐 Open Browser"
+                               styleClass="action-button" prefWidth="150" prefHeight="45" />
+                </HBox>
+
+                <!-- Upload Actions -->
+                <HBox spacing="15" alignment="CENTER">
+                    <MFXButton fx:id="uploadJarsBtn" text="📤 Upload JARs"
+                               styleClass="primary-button" prefWidth="150" prefHeight="45" />
+                    <MFXButton fx:id="uploadJspsBtn" text="📤 Upload JSPs"
+                               styleClass="primary-button" prefWidth="150" prefHeight="45" />
+                    <MFXButton fx:id="uploadAllBtn" text="📤 Upload All"
+                               styleClass="success-button" prefWidth="150" prefHeight="45" />
+                </HBox>
+            </VBox>
+
+            <!-- Log Area -->
+            <VBox styleClass="log-section" VBox.vgrow="ALWAYS">
+                <Label text="Application Log" styleClass="section-title" />
+                <TextArea fx:id="logArea" styleClass="log-area" prefHeight="200" />
+            </VBox>
+        </VBox>
+    </ScrollPane>
+</VBox>

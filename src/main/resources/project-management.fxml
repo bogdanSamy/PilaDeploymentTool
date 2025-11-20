@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.TableColumn?>
+<?import javafx.scene.control.TableView?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.shape.SVGPath?>
+
+<AnchorPane prefHeight="700.0" prefWidth="900.0" styleClass="base" stylesheets="@project-management.css" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml/1">
+    <children>
+        <!-- Decorative side panels -->
+        <AnchorPane layoutX="542.0" layoutY="-8.0" prefHeight="80.0" prefWidth="240.0" rotate="41.6" styleClass="side" AnchorPane.rightAnchor="-108.0" AnchorPane.topAnchor="-8.0" />
+        <AnchorPane layoutX="-106.0" layoutY="640.0" prefHeight="80.0" prefWidth="240.0" rotate="41.6" styleClass="side" AnchorPane.bottomAnchor="-50.0" AnchorPane.leftAnchor="-90.0" />
+
+        <!-- Close button -->
+        <Button fx:id="closeBtn" mnemonicParsing="false" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+            <graphic>
+                <SVGPath content="M3.726563 3.023438L3.023438 3.726563L7.292969 8L3.023438 12.269531L3.726563 12.980469L8 8.707031L12.269531 12.980469L12.980469 12.269531L8.707031 8L12.980469 3.726563L12.269531 3.023438L8 7.292969Z" styleClass="btn-shape" />
+            </graphic>
+        </Button>
+
+        <!-- Main content with ScrollPane -->
+        <ScrollPane fitToWidth="true" hbarPolicy="NEVER" styleClass="scroll-pane" AnchorPane.bottomAnchor="20.0" AnchorPane.leftAnchor="40.0" AnchorPane.rightAnchor="40.0" AnchorPane.topAnchor="40.0">
+            <content>
+                <VBox alignment="TOP_CENTER" spacing="20.0">
+                    <children>
+                        <!-- Title -->
+                        <Label styleClass="title-label" text="Project Management" />
+
+                        <!-- Projects Table -->
+                        <VBox spacing="10.0">
+                            <children>
+                                <Label styleClass="section-label" text="Projects List" />
+                                <TableView fx:id="projectsTable" prefHeight="200.0" styleClass="projects-table">
+                                    <columns>
+                                        <TableColumn fx:id="nameColumn" prefWidth="200.0" text="Project Name" />
+                                        <TableColumn fx:id="localJarColumn" prefWidth="300.0" text="Local JAR Path" />
+                                        <TableColumn fx:id="remoteJarColumn" prefWidth="300.0" text="Remote JAR Path" />
+                                    </columns>
+                                </TableView>
+                            </children>
+                        </VBox>
+
+                        <!-- Project Details Form -->
+                        <VBox spacing="15.0" styleClass="form-container">
+                            <children>
+                                <Label styleClass="section-label" text="Project Details" />
+
+                                <!-- Project Name -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="Project Name: *" />
+                                        <TextField fx:id="nameField" promptText="Enter project name" styleClass="field-input" />
+                                    </children>
+                                </VBox>
+
+                                <!-- Local JAR Path -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="Local JAR Path: *" />
+                                        <HBox spacing="10.0">
+                                            <children>
+                                                <TextField fx:id="localJarPathField" promptText="Path where JAR files are generated" styleClass="field-input" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="browseLocalJarBtn" styleClass="browse-btn" text="Browse" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <!-- Local JSP Path -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="Local JSP Path:" />
+                                        <HBox spacing="10.0">
+                                            <children>
+                                                <TextField fx:id="localJspPathField" promptText="Path where JSP files are located" styleClass="field-input" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="browseLocalJspBtn" styleClass="browse-btn" text="Browse" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <!-- Remote JAR Path -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="Remote JAR Path: *" />
+                                        <TextField fx:id="remoteJarPathField" promptText="e.g., /opt/tomcat/webapps/myapp/WEB-INF/lib" styleClass="field-input" />
+                                    </children>
+                                </VBox>
+
+                                <!-- Remote JSP Path -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="Remote JSP Path:" />
+                                        <TextField fx:id="remoteJspPathField" promptText="e.g., /opt/tomcat/webapps/myapp" styleClass="field-input" />
+                                    </children>
+                                </VBox>
+
+                                <!-- Build File Path -->
+                                <VBox spacing="8.0">
+                                    <children>
+                                        <Label styleClass="field-label" text="Build File Path:" />
+                                        <HBox spacing="10.0">
+                                            <children>
+                                                <TextField fx:id="buildFilePathField" promptText="Path to pom.xml, build.gradle, etc." styleClass="field-input" HBox.hgrow="ALWAYS" />
+                                                <Button fx:id="browseBuildFileBtn" styleClass="browse-btn" text="Browse" />
+                                            </children>
+                                        </HBox>
+                                    </children>
+                                </VBox>
+
+                                <!-- Required fields note -->
+                                <Label styleClass="note-label" text="* Required fields" />
+                            </children>
+                        </VBox>
+
+                        <!-- Action Buttons -->
+                        <HBox alignment="CENTER" spacing="15.0">
+                            <children>
+                                <Button fx:id="addBtn" styleClass="action-btn, add-btn" text="Add Project" />
+                                <Button fx:id="updateBtn" styleClass="action-btn, update-btn" text="Update" />
+                                <Button fx:id="deleteBtn" styleClass="action-btn, delete-btn" text="Delete" />
+                                <Button fx:id="clearBtn" styleClass="action-btn, clear-btn" text="Clear" />
+                            </children>
+                            <VBox.margin>
+                                <Insets top="10.0" />
+                            </VBox.margin>
+                        </HBox>
+
+                        <!-- Close Button -->
+                        <HBox alignment="CENTER">
+                            <children>
+                                <Button fx:id="closeDialogBtn" styleClass="action-btn, close-dialog-btn" text="Close" />
+                            </children>
+                            <VBox.margin>
+                                <Insets top="10.0" />
+                            </VBox.margin>
+                        </HBox>
+                    </children>
+                    <padding>
+                        <Insets bottom="20.0" />
+                    </padding>
+                </VBox>
+            </content>
+        </ScrollPane>
+    </children>
+</AnchorPane>

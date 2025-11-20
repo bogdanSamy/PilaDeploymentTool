@@ -1,0 +1,295 @@
+/* ========================================================================== */
+/*                               TITLE BAR                                     */
+/* ========================================================================== */
+
+.left {
+    -fx-background-color: -color-accent-emphasis;
+}
+
+.left > HBox {
+    -fx-background-color: transparent;
+}
+
+.title {
+    -fx-text-fill: -color-fg-emphasis;
+    -fx-font-size: 14;
+    -fx-font-weight: bold;
+}
+
+/* --- Titlebar Buttons --- */
+.hit-btn {
+    -fx-min-width: 46;
+    -fx-max-width: 46;
+    -fx-pref-width: 46;
+    -fx-min-height: 40;
+    -fx-pref-height: 40;
+    -fx-max-height: 40;
+
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-cursor: hand;
+    -fx-padding: 0;
+
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+}
+
+.hit-btn .shape {
+    -fx-fill: -color-fg-emphasis;
+}
+
+.hit-btn:ht-min,
+.hit-btn:ht-max {
+    -fx-background-color: rgba(255, 255, 255, 0.15);
+}
+
+.hit-btn:ht-close {
+    -fx-background-color: #C42B1C;
+}
+
+.hit-btn:ht-close .shape {
+    -fx-fill: white;
+}
+
+/* ========================================================================== */
+/*                               CONTENT AREA                                  */
+/* ========================================================================== */
+
+.content-area {
+    -fx-background-color: -color-bg-default;
+    -fx-padding: 30px;
+}
+
+.app-title {
+    -fx-font-size: 48px;
+    -fx-font-weight: bold;
+    -fx-text-fill: -color-accent-emphasis;
+    -fx-effect: dropshadow(gaussian, -color-shadow-default, 10, 0, 0, 2);
+}
+
+.selection-label {
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-fg-default;
+    -fx-padding: 0 0 8px 4px;
+}
+/* ========================================================================== */
+/*                           STANDARD COMBOBOX                                */
+/* ========================================================================== */
+
+/* Stil pentru toate ComboBox-urile */
+.combo-box {
+    -fx-pref-height: 52px;
+    -fx-border-color: #0969da;      /* bordura albastră */
+    -fx-border-width: 2px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-background-color: -color-bg-default;
+    -fx-padding: 0 12px;
+    -fx-cursor: hand;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;  /* font ca butoanele */
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;                             /* bold ca butoanele */
+    -fx-text-fill: -color-fg-default;
+}
+
+/* Hover pe ComboBox */
+.combo-box:hover {
+    -fx-border-color: #0550ae;
+    -fx-background-color: -color-bg-subtle;
+}
+
+/* Focus pe ComboBox */
+.combo-box:focused {
+    -fx-border-width: 3px;
+}
+
+/* Textul din interiorul ComboBox-ului */
+.combo-box .text-field {
+    -fx-background-color: transparent;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-accent-emphasis;;
+}
+
+/* Items din lista dropdown */
+.combo-box .list-cell {
+    -fx-background-color: transparent;
+    -fx-padding: 12px 18px;
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-text-fill: -color-accent-emphasis;
+    -fx-cursor: hand;
+    -fx-background-radius: 6px;
+}
+
+/* Hover item in dropdown */
+.combo-box .list-cell:hover {
+    -fx-background-color: -color-bg-default
+}
+
+/* Selected item */
+.combo-box .list-cell:selected {
+    -fx-background-color: -color-bg-default;
+    -fx-text-fill: -color-accent-emphasis;
+}
+
+/* ScrollPane din dropdown */
+.combo-box .scroll-pane {
+    -fx-background-color: -color-bg-default;
+    -fx-background-radius: 10px;
+}
+
+.combo-box .scroll-pane .viewport {
+    -fx-background-color: -color-bg-default;
+}
+
+.combo-box .scroll-pane .content {
+    -fx-background-color: -color-bg-default;
+}
+
+/* ========================================================================== */
+/*                               MANAGE BUTTON                                 */
+/* ========================================================================== */
+
+.manage-button {
+    -fx-background-color: -color-bg-default;
+    -fx-background-radius: 10px;
+
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 10px;
+
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 16px;        /* Schimbat de la 14px la 16px */
+    -fx-font-weight: 700;       /* Schimbat de la 600 la 700 (bold) */
+
+    -fx-pref-height: 48px;
+    -fx-padding: 0 10px;
+
+    -fx-cursor: hand;
+}
+
+/* Hover */
+.manage-button:hover {
+    -fx-background-color: -color-bg-subtle;
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-width: 2px;
+    -fx-text-fill: -color-accent-emphasis;
+}
+
+/* Pressed */
+.manage-button:pressed {
+    -fx-background-color: -color-bg-inset;
+    -fx-scale-x: 0.97;
+    -fx-scale-y: 0.97;
+}
+
+/* Icons in manage button */
+.manage-button .mfx-font-icon {
+    -fx-icon-color: -color-fg-default;
+}
+
+.manage-button:hover .mfx-font-icon {
+    -fx-icon-color: -color-accent-emphasis;
+}
+
+/* ========================================================================== */
+/*                            PRIMARY BUTTON                                   */
+/* ========================================================================== */
+
+.primary-button,
+.mfx-button.primary-button {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-background-radius: 8px;
+    -fx-text-fill: white;
+
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+
+    -fx-padding: 14px 32px;
+    -fx-pref-height: 52px;
+
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 8, 0, 0, 2);
+}
+
+.primary-button:hover {
+    -fx-background-color: -color-accent-fg;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 12, 0, 0, 4);
+}
+
+.primary-button:pressed {
+    -fx-background-color: -color-accent-muted;
+    -fx-scale-x: 0.97;
+    -fx-scale-y: 0.97;
+}
+
+/* ========================================================================== */
+/*                           SECONDARY BUTTON                                  */
+/* ========================================================================== */
+
+.secondary-button,
+.mfx-button.secondary-button {
+    -fx-background-color: -color-bg-subtle;
+    -fx-background-radius: 8px;
+
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 16px;        /* Schimbat de la 15px la 16px */
+    -fx-font-weight: 700;       /* Schimbat de la 600 la 700 (bold) */
+
+    -fx-padding: 12px 24px;
+    -fx-pref-height: 48px;
+
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8px;
+
+    -fx-cursor: hand;
+}
+
+.secondary-button:hover {
+    -fx-background-color: -color-bg-inset;
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-width: 2px;
+}
+
+.secondary-button:pressed {
+    -fx-background-color: -color-bg-default;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+/* ========================================================================== */
+/*                               SCROLL BAR                                    */
+/* ========================================================================== */
+
+.scroll-bar {
+    -fx-background-color: transparent;
+}
+
+.scroll-bar .thumb {
+    -fx-background-color: -color-border-default;
+    -fx-background-radius: 4px;
+}
+
+.scroll-bar .thumb:hover {
+    -fx-background-color: -color-fg-muted;
+}
+
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+/* ========================================================================== */
+/*                           FOCUS INDICATORS                                  */
+/* ========================================================================== */
+
+.mfx-button:focused,
+.mfx-combo-box:focused {
+    -fx-focus-color: transparent;
+    -fx-background-insets: 0;
+}

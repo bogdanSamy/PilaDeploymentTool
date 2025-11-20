@@ -1,0 +1,327 @@
+/* ========================================================================== */
+/*                               TITLE BAR                                     */
+/* ========================================================================== */
+
+.title-bar {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-width: 0 0 2px 0;
+}
+
+.title {
+    -fx-text-fill: white;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+}
+
+/* Hit buttons */
+.hit-btn {
+    -fx-min-width: 46px;
+    -fx-max-width: 46px;
+    -fx-pref-width: 46px;
+    -fx-min-height: 40px;
+    -fx-pref-height: 40px;
+    -fx-max-height: 40px;
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+
+.shape {
+    -fx-fill: white;
+}
+
+.minimize-btn:hover,
+.maximize-btn:hover {
+    -fx-background-color: rgba(255, 255, 255, 0.1);
+}
+
+.close-btn:hover {
+    -fx-background-color: #C42B1C;
+}
+
+.close-btn:hover .shape {
+    -fx-fill: white;
+}
+
+/* ========================================================================== */
+/*                               CONTENT AREA                                  */
+/* ========================================================================== */
+
+.content-scroll {
+    -fx-background-color: -color-bg-default;
+}
+
+.content-scroll > .viewport {
+    -fx-background-color: -color-bg-default;
+}
+
+.content-container {
+    -fx-background-color: -color-bg-default;
+}
+
+/* ========================================================================== */
+/*                               INFO CARDS - CLEAN                            */
+/* ========================================================================== */
+
+.info-card-simple {
+    -fx-background-color: -color-bg-subtle;
+    -fx-background-radius: 10px;
+    -fx-padding: 15px 20px;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 10px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);
+    -fx-alignment: center-left;
+}
+
+.card-title-clean {
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+}
+
+.change-btn-large {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 2);
+}
+
+.change-btn-large:hover {
+    -fx-background-color: -color-accent-fg;
+    -fx-scale-x: 1.03;
+    -fx-scale-y: 1.03;
+}
+
+.change-btn-large:pressed {
+    -fx-scale-x: 0.97;
+    -fx-scale-y: 0.97;
+}
+
+/* ========================================================================== */
+/*                               FILE SECTIONS                                 */
+/* ========================================================================== */
+
+.file-section {
+    -fx-spacing: 10px;
+}
+
+.section-title {
+    -fx-text-fill: -color-accent-emphasis;
+    -fx-font-size: 18px;
+    -fx-font-weight: 700;
+}
+
+.count-label {
+    -fx-text-fill: -color-fg-muted;
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-background-color: -color-bg-subtle;
+    -fx-padding: 5px 12px;
+    -fx-background-radius: 15px;
+}
+
+.search-field {
+    -fx-background-color: -color-bg-default;
+    -fx-text-fill: -color-fg-default;
+    -fx-prompt-text-fill: -color-fg-muted;
+    -fx-font-size: 14px;
+    -fx-pref-height: 40px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+    -fx-padding: 0 12px;
+}
+
+.search-field:focused {
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-width: 2px;
+}
+
+.file-dropdown {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8px;
+}
+
+.file-dropdown .title {
+    -fx-background-color: -color-bg-subtle;
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+}
+
+.file-dropdown .content {
+    -fx-background-color: -color-bg-default;
+    -fx-padding: 10px;
+}
+
+.file-scroll {
+    -fx-background-color: transparent;
+}
+
+.file-scroll > .viewport {
+    -fx-background-color: transparent;
+}
+
+.file-list {
+    -fx-background-color: -color-bg-default;
+}
+
+.file-list .check-box {
+    -fx-text-fill: -color-fg-default;
+}
+
+.file-list .check-box:hover {
+    -fx-background-color: -color-bg-subtle;
+}
+
+/* ========================================================================== */
+/*                               ACTION BUTTONS                                */
+/* ========================================================================== */
+
+.action-button,
+.primary-button,
+.success-button,
+.danger-button {
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+
+/* Danger Button - Restart Server */
+.danger-button {
+    -fx-background-color: #cf222e;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(207,34,46,0.3), 10, 0, 0, 2);
+}
+
+.danger-button:hover {
+    -fx-background-color: #a40e26;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.danger-button:pressed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+/* Primary Button - Upload */
+.primary-button {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 8, 0, 0, 2);
+}
+
+.primary-button:hover {
+    -fx-background-color: -color-accent-fg;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.primary-button:pressed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+/* Success Button - Upload All */
+.success-button {
+    -fx-background-color: #2da44e;
+    -fx-text-fill: white;
+    -fx-effect: dropshadow(gaussian, rgba(45,164,78,0.3), 10, 0, 0, 2);
+}
+
+.success-button:hover {
+    -fx-background-color: #2c974b;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.success-button:pressed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+/* Action Button - Secondary actions */
+.action-button {
+    -fx-background-color: -color-bg-subtle;
+    -fx-text-fill: -color-fg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8px;
+}
+
+.action-button:hover {
+    -fx-background-color: -color-bg-inset;
+    -fx-border-color: -color-accent-emphasis;
+}
+
+.action-button:pressed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+/* ========================================================================== */
+/*                               LOG SECTION                                   */
+/* ========================================================================== */
+
+.log-section {
+    -fx-spacing: 10px;
+}
+
+.log-area {
+    -fx-background-color: #1e1e1e;
+    -fx-text-fill: #d4d4d4;
+    -fx-font-family: "Consolas", "Monaco", "Courier New", monospace;
+    -fx-font-size: 12px;
+    -fx-background-radius: 8px;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8px;
+    -fx-padding: 10px;
+}
+
+.log-area .content {
+    -fx-background-color: #1e1e1e;
+}
+
+.log-area .scroll-pane {
+    -fx-background-color: transparent;
+}
+
+.log-area .scroll-pane .viewport {
+    -fx-background-color: transparent;
+}
+
+/* JSP File hierarchy indentation */
+.file-list .check-box {
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 13px;
+}
+
+.file-list .check-box:hover {
+    -fx-background-color: -color-bg-subtle;
+}
+
+/* Folder separator visual */
+.file-list .check-box .text {
+    -fx-fill: -color-fg-default;
+}
+
+/* Loading overlay styles */
+.progress-indicator {
+    -fx-progress-color: -color-accent-emphasis;
+}
+
+.progress-indicator .percentage {
+    -fx-fill: null;
+}

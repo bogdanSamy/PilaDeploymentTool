@@ -1,0 +1,161 @@
+/* ========================================================================== */
+/*                               TITLE BAR & DECORATIONS                       */
+/* ========================================================================== */
+
+.base {
+    -fx-background-color: -color-bg-default;
+}
+
+.side {
+    -fx-background-color: -color-accent-emphasis;
+}
+
+/* Close button */
+#closeBtn {
+    -fx-min-width: 46px;
+    -fx-max-width: 46px;
+    -fx-pref-width: 46px;
+    -fx-min-height: 26px;
+    -fx-pref-height: 26px;
+    -fx-max-height: 26px;
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+
+.btn-shape {
+    -fx-fill: -color-fg-default;
+}
+
+.hit-close-btn,
+#closeBtn:hover {
+    -fx-background-color: #C42B1C;
+}
+
+#closeBtn:hover .btn-shape {
+    -fx-fill: white;
+}
+
+/* ========================================================================== */
+/*                               ALERT ICON                                    */
+/* ========================================================================== */
+
+.alert-icon {
+    -fx-scale-x: 2.5;
+    -fx-scale-y: 2.5;
+}
+
+.error-icon {
+    -fx-fill: #cf222e;
+}
+
+.info-icon {
+    -fx-fill: #0969da;
+}
+
+.warning-icon {
+    -fx-fill: #bf8700;
+}
+
+.confirmation-icon {
+    -fx-fill: #8250df;
+}
+
+/* ========================================================================== */
+/*                               ALERT TITLE                                   */
+/* ========================================================================== */
+
+.alert-title {
+    -fx-font-size: 22px;
+    -fx-font-weight: bold;
+    -fx-text-alignment: center;
+}
+
+.error-title {
+    -fx-text-fill: #cf222e;
+}
+
+.info-title {
+    -fx-text-fill: #0969da;
+}
+
+.warning-title {
+    -fx-text-fill: #bf8700;
+}
+
+.confirmation-title {
+    -fx-text-fill: #8250df;
+}
+
+/* ========================================================================== */
+/*                               ALERT MESSAGE                                 */
+/* ========================================================================== */
+
+.alert-message {
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 15px;
+    -fx-font-weight: 500;
+    -fx-text-alignment: center;
+    -fx-wrap-text: true;
+}
+
+/* ========================================================================== */
+/*                               ACTION BUTTONS                                */
+/* ========================================================================== */
+
+.action-btn {
+    -fx-font-size: 15px;
+    -fx-font-weight: 700;
+    -fx-min-width: 100px;
+    -fx-pref-width: 100px;
+    -fx-min-height: 42px;
+    -fx-pref-height: 42px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-cursor: hand;
+    -fx-padding: 10px 20px;
+}
+
+/* OK button */
+.ok-btn {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-text-fill: white;
+    -fx-border-width: 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 8, 0, 0, 2);
+}
+
+.ok-btn:hover {
+    -fx-background-color: -color-accent-fg;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 12, 0, 0, 4);
+}
+
+.ok-btn:pressed {
+    -fx-background-color: -color-accent-muted;
+    -fx-scale-x: 0.97;
+    -fx-scale-y: 0.97;
+}
+
+/* Cancel button */
+.cancel-btn {
+    -fx-background-color: -color-bg-subtle;
+    -fx-text-fill: -color-fg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+}
+
+.cancel-btn:hover {
+    -fx-background-color: -color-bg-inset;
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-width: 2px;
+}
+
+.cancel-btn:pressed {
+    -fx-background-color: -color-bg-default;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+

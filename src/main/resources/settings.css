@@ -1,0 +1,238 @@
+/* ========================================================================== */
+/*                               TITLE BAR & DECORATIONS                       */
+/* ========================================================================== */
+
+.base {
+    -fx-background-color: -color-bg-default;
+}
+
+.side {
+    -fx-background-color: -color-accent-emphasis;
+}
+
+/* Close button */
+#closeBtn {
+    -fx-min-width: 46px;
+    -fx-max-width: 46px;
+    -fx-pref-width: 46px;
+    -fx-min-height: 26px;
+    -fx-pref-height: 26px;
+    -fx-max-height: 26px;
+    -fx-border-radius: 0;
+    -fx-background-radius: 0;
+    -fx-background-insets: 0;
+    -fx-background-color: transparent;
+    -fx-cursor: hand;
+}
+
+.btn-shape {
+    -fx-fill: -color-fg-default;
+}
+
+.hit-close-btn,
+#closeBtn:hover {
+    -fx-background-color: #C42B1C;
+}
+
+#closeBtn:hover .btn-shape {
+    -fx-fill: white;
+}
+
+/* ========================================================================== */
+/*                               CONTENT AREA                                  */
+/* ========================================================================== */
+
+/* Title */
+.title-label {
+    -fx-text-fill: -color-accent-emphasis;
+    -fx-font-size: 48px;
+    -fx-font-weight: bold;
+    -fx-padding: 0 0 20px 0;
+    -fx-effect: dropshadow(gaussian, -color-shadow-default, 10, 0, 0, 2);
+}
+
+/* Field labels */
+.field-label {
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 14px;
+    -fx-font-weight: 700;
+    -fx-padding: 0 0 8px 4px;
+}
+
+/* ========================================================================== */
+/*                               TEXT FIELDS                                   */
+/* ========================================================================== */
+
+.field-input {
+    -fx-background-color: -color-bg-default;
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-pref-height: 52px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-border-color: #0969da;
+    -fx-border-width: 2px;
+    -fx-padding: 0 12px;
+}
+
+.field-input:focused {
+    -fx-border-color: #0550ae;
+    -fx-border-width: 3px;
+    -fx-background-color: -color-bg-subtle;
+}
+
+/* ========================================================================== */
+/*                               COMBOBOX (THEME SELECTOR)                     */
+/* ========================================================================== */
+
+.theme-combo {
+    -fx-background-color: -color-bg-default;
+    -fx-pref-height: 52px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-border-color: #0969da;
+    -fx-border-width: 2px;
+}
+
+.theme-combo .list-cell {
+    -fx-background-color: -color-bg-default;
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-padding: 8px 12px;
+}
+
+.theme-combo:focused {
+    -fx-border-color: #0550ae;
+    -fx-border-width: 3px;
+    -fx-background-color: -color-bg-subtle;
+}
+
+.theme-combo .arrow-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0 12px;
+}
+
+.theme-combo .arrow {
+    -fx-background-color: -color-fg-default;
+}
+
+.theme-combo:hover {
+    -fx-border-color: -color-accent-emphasis;
+}
+
+/* ComboBox Popup */
+.theme-combo .list-view {
+    -fx-background-color: -color-bg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.15), 12, 0, 0, 4);
+}
+
+.theme-combo .list-cell:hover {
+    -fx-background-color: -color-bg-subtle;
+}
+
+.theme-combo .list-cell:selected {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-text-fill: white;
+}
+
+/* ========================================================================== */
+/*                               BROWSE BUTTONS                                */
+/* ========================================================================== */
+
+.browse-btn {
+    -fx-background-color: -color-bg-subtle;
+    -fx-background-radius: 8px;
+
+    -fx-text-fill: -color-fg-default;
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+
+    -fx-min-width: 100px;
+    -fx-pref-width: 100px;
+    -fx-min-height: 52px;
+    -fx-pref-height: 52px;
+
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+    -fx-border-radius: 8px;
+
+    -fx-cursor: hand;
+}
+
+.browse-btn:hover {
+    -fx-background-color: -color-bg-inset;
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-width: 2px;
+    -fx-text-fill: -color-accent-emphasis;
+}
+
+.browse-btn:pressed {
+    -fx-background-color: -color-bg-default;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
+
+/* ========================================================================== */
+/*                               ACTION BUTTONS                                */
+/* ========================================================================== */
+
+/* Base style for action buttons */
+.action-btn {
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
+    -fx-min-width: 120px;
+    -fx-pref-width: 120px;
+    -fx-min-height: 52px;
+    -fx-pref-height: 52px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-cursor: hand;
+    -fx-padding: 14px 32px;
+}
+
+/* Save button - PRIMARY */
+.save-btn {
+    -fx-background-color: -color-accent-emphasis;
+    -fx-text-fill: white;
+    -fx-border-width: 0;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 8, 0, 0, 2);
+}
+
+.save-btn:hover {
+    -fx-background-color: -color-accent-fg;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.18), 12, 0, 0, 4);
+}
+
+.save-btn:pressed {
+    -fx-background-color: -color-accent-muted;
+    -fx-scale-x: 0.97;
+    -fx-scale-y: 0.97;
+}
+
+/* Cancel button - SECONDARY */
+.cancel-btn {
+    -fx-background-color: -color-bg-subtle;
+    -fx-text-fill: -color-fg-default;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1.5px;
+}
+
+.cancel-btn:hover {
+    -fx-background-color: -color-bg-inset;
+    -fx-border-color: -color-accent-emphasis;
+    -fx-border-width: 2px;
+}
+
+.cancel-btn:pressed {
+    -fx-background-color: -color-bg-default;
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
+}
