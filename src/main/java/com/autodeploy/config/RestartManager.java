@@ -37,7 +37,7 @@ public class RestartManager {
     }
 
     /**
-     * Get current restart status
+     * Get current restart status branch restartManager
      */
     public RestartStatus getStatus() throws Exception {
         String command = server.getRestartScript() + " " + currentUsername + " get";
