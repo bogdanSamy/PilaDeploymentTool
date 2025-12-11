@@ -8,7 +8,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.SVGPath?>
 
-<AnchorPane prefHeight="300.0" prefWidth="400.0" styleClass="base" stylesheets="@custom-alert.css" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml/1">
+<AnchorPane prefHeight="320.0" prefWidth="400.0" styleClass="base" stylesheets="@../css/custom-alert.css" xmlns="http://javafx.com/javafx" xmlns:fx="http://javafx.com/fxml/1">
     <children>
         <!-- Decorative side panels -->
         <AnchorPane layoutX="242.0" layoutY="-8.0" prefHeight="60.0" prefWidth="180.0" rotate="41.6" styleClass="side" AnchorPane.rightAnchor="-88.0" AnchorPane.topAnchor="-8.0" />

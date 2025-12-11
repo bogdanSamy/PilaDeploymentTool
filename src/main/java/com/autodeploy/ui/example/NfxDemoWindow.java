@@ -80,11 +80,11 @@ public class NfxDemoWindow extends NfxStage implements Initializable {
         try {
             //Set the icon
             getIcons().add(
-                    new Image(Assets.load("/icon.png").toExternalForm())
+                    new Image(Assets.load("/logo.png").toExternalForm())
             );
 
             //Load fxml
-            Parent parent = Assets.load("/selection-window.fxml", this);
+            Parent parent = Assets.load("/fxml/selection-window.fxml", this);
             Scene scene = new Scene(parent);
             setScene(scene);
             initialize();

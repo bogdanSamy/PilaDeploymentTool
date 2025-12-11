@@ -46,7 +46,7 @@ public class ApplicationConfig {
     }
 
     public String getBrowserUrlSuffix() {
-        return properties.getProperty("browser.url.suffix", "");
+        return properties.getProperty("browser.url.suffix", "main?application.HomePageIntranet.new");
     }
 
     public void setBrowserUrlSuffix(String suffix) {
@@ -62,7 +62,7 @@ public class ApplicationConfig {
     }
 
     public String getRemoteLogPath() {
-        return properties.getProperty("download.remote.log.path", "");
+        return properties.getProperty("download.remote.log.path", "/mount/bea/log/h2o/12d/dINdomain/serverdIN1.out");
     }
 
     public void setRemoteLogPath(String path) {
@@ -77,7 +77,6 @@ public class ApplicationConfig {
         properties.setProperty("username", path);
     }
 
-    // NEW: Theme configuration
     public String getTheme() {
         return properties.getProperty("app.theme", "Primer Light");
     }
@@ -86,7 +85,6 @@ public class ApplicationConfig {
         properties.setProperty("app.theme", theme);
     }
 
-    // NEW: Build URL with IP and suffix
     public String getFullBrowserUrl(String serverIp) {
         String suffix = getBrowserUrlSuffix();
         if (suffix == null || suffix.trim().isEmpty()) {

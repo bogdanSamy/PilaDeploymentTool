@@ -1,21 +1,8 @@
-/*
- * Copyright © 2024. XTREME SOFTWARE SOLUTIONS
- *
- * All rights reserved. Unauthorized use, reproduction, or distribution
- * of this software or any portion of it is strictly prohibited and may
- * result in severe civil and criminal penalties. This code is the sole
- * proprietary of XTREME SOFTWARE SOLUTIONS.
- *
- * Commercialization, redistribution, and use without explicit permission
- * from XTREME SOFTWARE SOLUTIONS, are expressly forbidden.
- */
-
 package com.autodeploy.ui.dialogs;
 
 import com.autodeploy.assets.Assets;
 import com.autodeploy.config.ServerManager;
 import com.autodeploy.model.Server;
-import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -32,88 +19,35 @@ import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 
-/**
- * @author XDSSWAR
- * Created on 11/19/2025
- */
 public class ServerManagementDialog extends AbstractNfxUndecoratedWindow implements Initializable {
 
-    @FXML
-    private Button closeBtn;
+    @FXML private Button closeBtn;
+    @FXML private TableView<Server> serversTable;
+    @FXML private TableColumn<Server, String> nameColumn;
+    @FXML private TableColumn<Server, String> hostColumn;
+    @FXML private TextField nameField;
+    @FXML private TextField hostField;
+    @FXML private TextField portField;
+    @FXML private TextField usernameField;
+    @FXML private PasswordField passwordField;
+    @FXML private TextField restartScriptField;
+    @FXML private Button addBtn;
+    @FXML private Button updateBtn;
+    @FXML private Button deleteBtn;
+    @FXML private Button clearBtn;
+    @FXML private Button closeDialogBtn;
 
-    @FXML
-    private TableView<Server> serversTable;
-
-    @FXML
-    private TableColumn<Server, String> nameColumn;
-
-    @FXML
-    private TableColumn<Server, String> hostColumn;
-
-    @FXML
-    private TableColumn<Server, Number> portColumn;
-
-    @FXML
-    private TextField nameField;
-
-    @FXML
-    private TextField hostField;
-
-    @FXML
-    private TextField portField;
-
-    @FXML
-    private TextField usernameField;
-
-    @FXML
-    private PasswordField passwordField;
-
-    @FXML
-    private Button addBtn;
-
-    @FXML
-    private Button updateBtn;
-
-    @FXML
-    private Button deleteBtn;
-
-    @FXML
-    private Button clearBtn;
-
-    @FXML
-    private Button closeDialogBtn;
-
-    /**
-     * The height of the title bar.
-     */
     private static final int TITLE_BAR_HEIGHT = 30;
-
-    /**
-     * Server manager instance
-     */
     private final ServerManager serverManager;
-
-    /**
-     * Observable list of servers
-     */
     private final ObservableList<Server> serversList;
-
-    /**
-     * Currently selected server for editing
-     */
     private Server selectedServer;
 
-    /**
-     * Constructs a new instance of ServerManagementDialog with an option to hide from the taskbar.
-     *
-     * @param hideFromTaskBar Indicates whether the dialog should be hidden from the taskbar.
-     */
     public ServerManagementDialog(boolean hideFromTaskBar) {
         super(hideFromTaskBar);
         this.serverManager = ServerManager.getInstance();
         this.serversList = FXCollections.observableArrayList();
         try {
-            Parent parent = Assets.load("/server-management.fxml", this);
+            Parent parent = Assets.load("/fxml/server-management.fxml", this);
             Scene scene = new Scene(parent);
             setScene(scene);
             setResizable(false);
@@ -130,10 +64,13 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         // Load servers
         loadServers();
 
-        // Close button
+        // Set default values for new entries
+        usernameField.setText("dev");
+        passwordField.setText("dev");
+        portField.setText("22");
+
         closeBtn.setOnAction(event -> close());
 
-        // Close dialog button
         closeDialogBtn.setOnAction(event -> close());
 
         // Action buttons
@@ -168,9 +105,6 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         });
     }
 
-    /**
-     * Setup table columns
-     */
     private void setupTable() {
         nameColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getName()));
@@ -178,19 +112,12 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         hostColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getHost()));
 
-        portColumn.setCellValueFactory(cellData ->
-                new SimpleIntegerProperty(cellData.getValue().getPort()));
-
         serversTable.setItems(serversList);
     }
 
-    /**
-     * Load servers from ServerManager
-     */
     private void loadServers() {
         serversList.clear();
 
-        // Reload from file to ensure we have the latest data
         serverManager.reload();
 
         List<Server> servers = serverManager.getServers();
@@ -199,36 +126,31 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         System.out.println("Loaded " + servers.size() + " servers into table");
     }
 
-    /**
-     * Load server data into form fields
-     */
     private void loadServerToFields(Server server) {
         nameField.setText(server.getName());
         hostField.setText(server.getHost());
         portField.setText(String.valueOf(server.getPort()));
         usernameField.setText(server.getUsername() != null ? server.getUsername() : "");
         passwordField.setText(server.getPassword() != null ? server.getPassword() : "");
+        restartScriptField.setText(server.getRestartManagerScript() != null
+                ? server.getRestartManagerScript()
+                : "/opt/scripts/restart_manager.sh");
     }
 
-    /**
-     * Clear all form fields
-     */
     private void clearFields() {
         nameField.clear();
         hostField.clear();
         portField.setText("22");
-        usernameField.clear();
-        passwordField.clear();
+        usernameField.setText("dev");
+        passwordField.setText("dev");
+        restartScriptField.setText("/opt/scripts/restart_manager.sh");
         serversTable.getSelectionModel().clearSelection();
         selectedServer = null;
     }
 
-    /**
-     * Add new server
-     */
     private void addServer() {
         if (!validateFields()) {
-            CustomAlert.showError("Validation Error", "Please fill in all required fields:\n- Name\n- Host\n- Username");
+            CustomAlert.showError("Validation Error", "Please fill in all required fields:\n- Name\n- Host\n- Port\n- Username\n- Password\n- Restart Script Path");
             return;
         }
 
@@ -240,11 +162,13 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
             int port = Integer.parseInt(portField.getText().trim());
             server.setPort(port);
         } catch (NumberFormatException e) {
+            // Should not happen due to regex validation, but fallback just in case
             server.setPort(22);
         }
 
         server.setUsername(usernameField.getText().trim());
         server.setPassword(passwordField.getText());
+        server.setRestartManagerScript(restartScriptField.getText().trim());
 
         serverManager.addServer(server);
         loadServers();
@@ -253,9 +177,6 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         CustomAlert.showInfo("Success", "Server added successfully!");
     }
 
-    /**
-     * Update existing server
-     */
     private void updateServer() {
         if (selectedServer == null) {
             CustomAlert.showError("Selection Error", "Please select a server to update.");
@@ -263,7 +184,7 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         }
 
         if (!validateFields()) {
-            CustomAlert.showError("Validation Error", "Please fill in all required fields:\n- Name\n- Host\n- Username");
+            CustomAlert.showError("Validation Error", "Please fill in all required fields:\n- Name\n- Host\n- Port\n- Username\n- Password\n- Restart Script Path");
             return;
         }
 
@@ -280,6 +201,7 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
 
         updatedServer.setUsername(usernameField.getText().trim());
         updatedServer.setPassword(passwordField.getText());
+        updatedServer.setRestartManagerScript(restartScriptField.getText().trim());
 
         serverManager.updateServer(selectedServer, updatedServer);
         loadServers();
@@ -288,9 +210,6 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         CustomAlert.showInfo("Success", "Server updated successfully!");
     }
 
-    /**
-     * Delete selected server
-     */
     private void deleteServer() {
         if (selectedServer == null) {
             CustomAlert.showError("Selection Error", "Please select a server to delete.");
@@ -298,7 +217,7 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         }
 
         boolean confirmed = CustomAlert.showConfirmation(
-                "Delete Server",
+                this, "Delete Server",
                 "Are you sure you want to delete the server '" + selectedServer.getName() + "'?"
         );
 
@@ -310,20 +229,15 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         }
     }
 
-    /**
-     * Validate required fields
-     */
     private boolean validateFields() {
         return !nameField.getText().trim().isEmpty()
                 && !hostField.getText().trim().isEmpty()
-                && !usernameField.getText().trim().isEmpty();
+                && !portField.getText().trim().isEmpty()
+                && !usernameField.getText().trim().isEmpty()
+                && !passwordField.getText().isEmpty()
+                && !restartScriptField.getText().trim().isEmpty();
     }
 
-    /**
-     * Retrieves the list of hit spots.
-     *
-     * @return The list of hit spots.
-     */
     @Override
     public List<HitSpot> getHitSpots() {
         HitSpot spot = HitSpot.builder()
@@ -344,11 +258,6 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         return List.of(spot);
     }
 
-    /**
-     * Retrieves the height of the title bar.
-     *
-     * @return The height of the title bar.
-     */
     @Override
     public double getTitleBarHeight() {
         return TITLE_BAR_HEIGHT;

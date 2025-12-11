@@ -1,15 +1,3 @@
-/*
- * Copyright © 2024. XTREME SOFTWARE SOLUTIONS
- *
- * All rights reserved. Unauthorized use, reproduction, or distribution
- * of this software or any portion of it is strictly prohibited and may
- * result in severe civil and criminal penalties. This code is the sole
- * proprietary of XTREME SOFTWARE SOLUTIONS.
- *
- * Commercialization, redistribution, and use without explicit permission
- * from XTREME SOFTWARE SOLUTIONS, are expressly forbidden.
- */
-
 package com.autodeploy.config;
 
 import com.autodeploy.model.Server;
@@ -17,18 +5,11 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Utility class for managing servers (save/load from JSON)
- *
- * @author XDSSWAR
- * Created on 11/19/2025
- */
 public class ServerManager {
     private static ServerManager instance;
     private static final String SERVERS_FILE = "servers.json";
@@ -37,8 +18,6 @@ public class ServerManager {
 
     private ServerManager() {
         objectMapper = new ObjectMapper();
-
-        // Enable pretty printing
         objectMapper.enable(SerializationFeature.INDENT_OUTPUT);
 
         // Ignore unknown properties during deserialization
@@ -55,9 +34,6 @@ public class ServerManager {
         return instance;
     }
 
-    /**
-     * Load servers from JSON file
-     */
     private void load() {
         File file = new File(SERVERS_FILE);
         if (file.exists() && file.length() > 0) {
@@ -86,9 +62,6 @@ public class ServerManager {
         }
     }
 
-    /**
-     * Save servers to JSON file
-     */
     public void save() {
         try {
             File file = new File(SERVERS_FILE);
@@ -100,24 +73,15 @@ public class ServerManager {
         }
     }
 
-    /**
-     * Reload servers from file
-     */
     public void reload() {
         System.out.println("↻ Reloading servers from file...");
         load();
     }
 
-    /**
-     * Get all servers
-     */
     public List<Server> getServers() {
         return new ArrayList<>(servers);
     }
 
-    /**
-     * Add a new server
-     */
     public void addServer(Server server) {
         if (server != null && server.isValid()) {
             servers.add(server);
@@ -128,9 +92,6 @@ public class ServerManager {
         }
     }
 
-    /**
-     * Update an existing server
-     */
     public void updateServer(Server oldServer, Server newServer) {
         int index = servers.indexOf(oldServer);
         if (index != -1 && newServer.isValid()) {
@@ -143,9 +104,6 @@ public class ServerManager {
         }
     }
 
-    /**
-     * Delete a server
-     */
     public void deleteServer(Server server) {
         if (servers.remove(server)) {
             save();
@@ -155,49 +113,4 @@ public class ServerManager {
         }
     }
 
-    /**
-     * Find server by name
-     */
-    public Server findServerByName(String name) {
-        return servers.stream()
-                .filter(s -> s.getName().equals(name))
-                .findFirst()
-                .orElse(null);
-    }
-
-    /**
-     * Find server by host
-     */
-    public Server findServerByHost(String host) {
-        return servers.stream()
-                .filter(s -> s.getHost().equals(host))
-                .findFirst()
-                .orElse(null);
-    }
-
-    /**
-     * Find server by ID
-     */
-    public Server findServerById(String id) {
-        return servers.stream()
-                .filter(s -> s.getId().equals(id))
-                .findFirst()
-                .orElse(null);
-    }
-
-    /**
-     * Get server count
-     */
-    public int getServerCount() {
-        return servers.size();
-    }
-
-    /**
-     * Clear all servers (for testing)
-     */
-    public void clear() {
-        servers.clear();
-        save();
-        System.out.println("✓ Cleared all servers");
-    }
 }

@@ -34,7 +34,6 @@ import java.net.URL;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.List;
-import java.util.Optional;
 import java.util.ResourceBundle;
 
 /**
@@ -52,11 +51,7 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
     @FXML
     private TableColumn<Project, String> nameColumn;
 
-    @FXML
-    private TableColumn<Project, String> localJarColumn;
-
-    @FXML
-    private TableColumn<Project, String> remoteJarColumn;
+    // ← REMOVED: localJarColumn and remoteJarColumn (no longer in FXML)
 
     @FXML
     private TextField nameField;
@@ -130,7 +125,7 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
         this.projectManager = ProjectManager.getInstance();
         this.projectsList = FXCollections.observableArrayList();
         try {
-            Parent parent = Assets.load("/project-management.fxml", this);
+            Parent parent = Assets.load("/fxml/project-management.fxml", this);
             Scene scene = new Scene(parent);
             setScene(scene);
             setResizable(false);
@@ -193,18 +188,11 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
         nameColumn.setCellValueFactory(cellData ->
                 new SimpleStringProperty(cellData.getValue().getName()));
 
-        localJarColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getLocalJarPath()));
-
-        remoteJarColumn.setCellValueFactory(cellData ->
-                new SimpleStringProperty(cellData.getValue().getRemoteJarPath()));
+        // ← REMOVED: localJarColumn and remoteJarColumn setup (no longer exist)
 
         projectsTable.setItems(projectsList);
     }
 
-    /**
-     * Load projects from ProjectManager
-     */
     /**
      * Load projects from ProjectManager
      */
@@ -251,7 +239,7 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
      */
     private void addProject() {
         if (!validateFields()) {
-            showAlert("Validation Error", "Please fill in all required fields:\n- Name\n- Local JAR Path\n- Remote JAR Path");
+            CustomAlert.showError("Validation Error", "Please fill in all fields");
             return;
         }
 
@@ -267,7 +255,7 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
         loadProjects();
         clearFields();
 
-        showInfo("Success", "Project added successfully!");
+        CustomAlert.showInfo("Success", "Project added successfully!");
     }
 
     /**
@@ -275,12 +263,12 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
      */
     private void updateProject() {
         if (selectedProject == null) {
-            showAlert("Selection Error", "Please select a project to update.");
+            CustomAlert.showError("Selection Error", "Please select a project to update.");
             return;
         }
 
         if (!validateFields()) {
-            showAlert("Validation Error", "Please fill in all required fields:\n- Name\n- Local JAR Path\n- Remote JAR Path");
+            CustomAlert.showError("Validation Error", "Please fill in all required fields:\n- Name\n- Local JAR Path\n- Remote JAR Path");
             return;
         }
 
@@ -296,7 +284,7 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
         loadProjects();
         clearFields();
 
-        showInfo("Success", "Project updated successfully!");
+        CustomAlert.showInfo("Success", "Project updated successfully!");
     }
 
     /**
@@ -304,12 +292,12 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
      */
     private void deleteProject() {
         if (selectedProject == null) {
-            showAlert("Selection Error", "Please select a project to delete.");
+            CustomAlert.showError("Selection Error", "Please select a project to delete.");
             return;
         }
 
-        boolean confirmed = showConfirmation(
-                "Delete Project",
+        boolean confirmed = CustomAlert.showConfirmation(
+                this, "Delete Project",
                 "Are you sure you want to delete the project '" + selectedProject.getName() + "'?"
         );
 
@@ -317,7 +305,7 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
             projectManager.deleteProject(selectedProject);
             loadProjects();
             clearFields();
-            showInfo("Success", "Project deleted successfully!");
+            CustomAlert.showInfo("Success", "Project deleted successfully!");
         }
     }
 
@@ -327,7 +315,10 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
     private boolean validateFields() {
         return !nameField.getText().trim().isEmpty()
                 && !localJarPathField.getText().trim().isEmpty()
-                && !remoteJarPathField.getText().trim().isEmpty();
+                && !localJspPathField.getText().trim().isEmpty()
+                && !remoteJarPathField.getText().trim().isEmpty()
+                && !remoteJspPathField.getText().trim().isEmpty()
+                && !buildFilePathField.getText().trim().isEmpty();
     }
 
     /**
@@ -381,27 +372,6 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
     }
 
     /**
-     * Show error alert
-     */
-    private void showAlert(String title, String message) {
-        CustomAlert.showError(title, message);
-    }
-
-    /**
-     * Show info alert
-     */
-    private void showInfo(String title, String message) {
-        CustomAlert.showInfo(title, message);
-    }
-
-    /**
-     * Show confirmation dialog
-     */
-    private boolean showConfirmation(String title, String message) {
-        return CustomAlert.showConfirmation(title, message);
-    }
-
-    /**
      * Retrieves the list of hit spots.
      *
      * @return The list of hit spots.
@@ -416,7 +386,9 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
 
         spot.hoveredProperty().addListener((obs, o, hovered) -> {
             if (hovered){
-                spot.getControl().getStyleClass().add("hit-close-btn");
+                if (!spot.getControl().getStyleClass().contains("hit-close-btn")) {
+                    spot.getControl().getStyleClass().add("hit-close-btn");
+                }
             }
             else {
                 spot.getControl().getStyleClass().remove("hit-close-btn");

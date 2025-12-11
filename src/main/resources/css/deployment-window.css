@@ -68,17 +68,17 @@
 .info-card-simple {
     -fx-background-color: -color-bg-subtle;
     -fx-background-radius: 10px;
-    -fx-padding: 15px 20px;
+    -fx-padding: 0px 0px;
     -fx-border-color: -color-border-default;
     -fx-border-width: 1.5px;
     -fx-border-radius: 10px;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.06), 6, 0, 0, 1);
-    -fx-alignment: center-left;
+    -fx-alignment: center;
 }
 
 .card-title-clean {
     -fx-text-fill: -color-fg-default;
-    -fx-font-size: 16px;
+    -fx-font-size: 14px;
     -fx-font-weight: 700;
 }
 
@@ -324,4 +324,35 @@
 
 .progress-indicator .percentage {
     -fx-fill: null;
+}
+
+/* ========================================================================== */
+/*                               LOG TOGGLE BUTTON                             */
+/* ========================================================================== */
+
+.log-toggle-btn {
+    -fx-background-color: -color-bg-subtle;
+    -fx-text-fill: -color-fg-muted;
+    -fx-font-size: 12px;
+    -fx-font-weight: 600;
+    -fx-padding: 2px 16px;
+    -fx-background-radius: 6px;
+    -fx-border-color: -color-border-default;
+    -fx-border-width: 1px;
+    -fx-border-radius: 6px;
+    -fx-cursor: hand;
+    -fx-opacity: 0.7;
+}
+
+.log-toggle-btn:hover {
+    -fx-opacity: 1.0;
+    -fx-background-color: -color-bg-inset;
+    -fx-border-color: -color-accent-emphasis;
+    -fx-scale-x: 1.02;
+    -fx-scale-y: 1.02;
+}
+
+.log-toggle-btn:pressed {
+    -fx-scale-x: 0.98;
+    -fx-scale-y: 0.98;
 }

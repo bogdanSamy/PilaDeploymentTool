@@ -8,7 +8,7 @@
 <?import javafx.scene.shape.SVGPath?>
 <?import io.github.palexdev.materialfx.controls.MFXButton?>
 
-<VBox prefHeight="800.0" prefWidth="1000.0" stylesheets="@deployment-window.css"
+<VBox prefHeight="550.0" prefWidth="500.0" stylesheets="@../css/deployment-window.css"
       xmlns="http://javafx.com/javafx/21"
       xmlns:fx="http://javafx.com/fxml/1">
 
@@ -18,7 +18,7 @@
               AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0">
             <ImageView fx:id="iconView" fitHeight="20.0" fitWidth="20.0"
                        pickOnBounds="true" preserveRatio="true">
-                <Image url="@icon.png" />
+                <Image url="@../logo.png" />
             </ImageView>
             <Label fx:id="title" styleClass="title" text="Deployment Manager" />
         </HBox>
@@ -47,7 +47,7 @@
     <ScrollPane fitToWidth="true" styleClass="content-scroll" VBox.vgrow="ALWAYS">
         <VBox styleClass="content-container" spacing="20">
             <padding>
-                <Insets top="20" bottom="20" left="30" right="30"/>
+                <Insets top="20" bottom="10" left="30" right="30"/>
             </padding>
 
             <!-- Header Section - Clean without labels -->
@@ -117,11 +117,11 @@
 
                 <!-- Main Actions -->
                 <HBox spacing="15" alignment="CENTER">
-                    <MFXButton fx:id="downloadLogsBtn" text="📥 Download Logs"
+                    <MFXButton fx:id="downloadLogsBtn" text="📥 serverdIN1.out"
                                styleClass="action-button" prefWidth="150" prefHeight="45" />
-                    <MFXButton fx:id="buildProjectBtn" text="🔨 Build Project"
+                    <MFXButton fx:id="buildProjectBtn" text="🔨 Build"
                                styleClass="action-button" prefWidth="150" prefHeight="45" />
-                    <MFXButton fx:id="openBrowserBtn" text="🌐 Open Browser"
+                    <MFXButton fx:id="openBrowserBtn" text="🌐 Open"
                                styleClass="action-button" prefWidth="150" prefHeight="45" />
                 </HBox>
 
@@ -136,8 +136,13 @@
                 </HBox>
             </VBox>
 
-            <!-- Log Area -->
-            <VBox styleClass="log-section" VBox.vgrow="ALWAYS">
+            <!-- Log Toggle Button -->
+            <HBox alignment="CENTER" spacing="2">
+                <Button fx:id="toggleLogBtn" text="📋 Show Logs" styleClass="log-toggle-btn" />
+            </HBox>
+
+            <!-- Log Area (Hidden by default) -->
+            <VBox fx:id="logSection" styleClass="log-section" VBox.vgrow="ALWAYS" managed="false" visible="false">
                 <Label text="Application Log" styleClass="section-title" />
                 <TextArea fx:id="logArea" styleClass="log-area" prefHeight="200" />
             </VBox>

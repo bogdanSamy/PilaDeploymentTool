@@ -52,12 +52,35 @@
 }
 
 /* ========================================================================== */
+/*                            MAIN SCROLL PANE                                 */
+/* ========================================================================== */
+
+.main-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.main-scroll-pane > .viewport {
+    -fx-background-color: -color-bg-default;
+}
+
+.main-scroll-pane > .scroll-bar:vertical {
+    -fx-background-color: -color-bg-default;
+    -fx-pref-width: 12px;
+}
+
+.main-scroll-pane > .scroll-bar:horizontal {
+    -fx-background-color: -color-bg-default;
+    -fx-pref-height: 12px;
+}
+
+/* ========================================================================== */
 /*                               CONTENT AREA                                  */
 /* ========================================================================== */
 
 .content-area {
     -fx-background-color: -color-bg-default;
-    -fx-padding: 30px;
+    -fx-min-width: 300px;
 }
 
 .app-title {
@@ -67,40 +90,68 @@
     -fx-effect: dropshadow(gaussian, -color-shadow-default, 10, 0, 0, 2);
 }
 
+/* Responsive title */
+@media (max-width: 500px) {
+    .app-title {
+        -fx-font-size: 36px;
+    }
+}
+
 .selection-label {
     -fx-font-size: 14px;
     -fx-font-weight: 700;
     -fx-text-fill: -color-fg-default;
     -fx-padding: 0 0 8px 4px;
 }
+
+/* Responsive containers */
+.selection-container {
+    -fx-min-width: 280px;
+    -fx-pref-width: 500px;
+    -fx-max-width: 500px;
+}
+
+.action-buttons-container {
+    -fx-min-width: 280px;
+    -fx-pref-width: 500px;
+    -fx-max-width: 500px;
+}
+
+.combo-row {
+    -fx-min-width: 280px;
+}
+
 /* ========================================================================== */
 /*                           STANDARD COMBOBOX                                */
 /* ========================================================================== */
 
 /* Stil pentru toate ComboBox-urile */
 .combo-box {
-    -fx-pref-height: 52px;
-    -fx-border-color: #0969da;      /* bordura albastră */
+    -fx-pref-height: 50px;
+    -fx-min-height: 50px;
+    -fx-max-height: 50px;
+    -fx-border-color: -color-accent-emphasis;
     -fx-border-width: 2px;
     -fx-border-radius: 8px;
     -fx-background-radius: 8px;
     -fx-background-color: -color-bg-default;
     -fx-padding: 0 12px;
     -fx-cursor: hand;
-    -fx-font-family: "Segoe UI", "Arial", sans-serif;  /* font ca butoanele */
+    -fx-font-family: "Segoe UI", "Arial", sans-serif;
     -fx-font-size: 16px;
-    -fx-font-weight: 700;                             /* bold ca butoanele */
+    -fx-font-weight: 700;
     -fx-text-fill: -color-fg-default;
 }
 
 /* Hover pe ComboBox */
 .combo-box:hover {
-    -fx-border-color: #0550ae;
+    -fx-border-color: -color-accent-fg;
     -fx-background-color: -color-bg-subtle;
 }
 
 /* Focus pe ComboBox */
 .combo-box:focused {
+    -fx-border-color: -color-accent-emphasis;
     -fx-border-width: 3px;
 }
 
@@ -110,7 +161,7 @@
     -fx-font-family: "Segoe UI", "Arial", sans-serif;
     -fx-font-size: 16px;
     -fx-font-weight: 700;
-    -fx-text-fill: -color-accent-emphasis;;
+    -fx-text-fill: -color-accent-emphasis;
 }
 
 /* Items din lista dropdown */
@@ -127,7 +178,7 @@
 
 /* Hover item in dropdown */
 .combo-box .list-cell:hover {
-    -fx-background-color: -color-bg-default
+    -fx-background-color: -color-bg-default;
 }
 
 /* Selected item */
@@ -163,10 +214,12 @@
     -fx-border-radius: 10px;
 
     -fx-text-fill: -color-fg-default;
-    -fx-font-size: 16px;        /* Schimbat de la 14px la 16px */
-    -fx-font-weight: 700;       /* Schimbat de la 600 la 700 (bold) */
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
 
-    -fx-pref-height: 48px;
+    -fx-min-height: 50px;
+    -fx-pref-height: 50px;
+    -fx-max-height: 50px;
     -fx-padding: 0 10px;
 
     -fx-cursor: hand;
@@ -210,7 +263,9 @@
     -fx-font-weight: 700;
 
     -fx-padding: 14px 32px;
-    -fx-pref-height: 52px;
+    -fx-min-height: 60px;
+    -fx-pref-height: 60px;
+    -fx-max-height: 60px;
 
     -fx-cursor: hand;
     -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.12), 8, 0, 0, 2);
@@ -239,11 +294,13 @@
     -fx-background-radius: 8px;
 
     -fx-text-fill: -color-fg-default;
-    -fx-font-size: 16px;        /* Schimbat de la 15px la 16px */
-    -fx-font-weight: 700;       /* Schimbat de la 600 la 700 (bold) */
+    -fx-font-size: 16px;
+    -fx-font-weight: 700;
 
     -fx-padding: 12px 24px;
-    -fx-pref-height: 48px;
+    -fx-min-height: 50px;
+    -fx-pref-height: 50px;
+    -fx-max-height: 50px;
 
     -fx-border-color: -color-border-default;
     -fx-border-width: 1.5px;
@@ -263,6 +320,7 @@
     -fx-scale-x: 0.98;
     -fx-scale-y: 0.98;
 }
+
 /* ========================================================================== */
 /*                               SCROLL BAR                                    */
 /* ========================================================================== */
@@ -284,6 +342,13 @@
     -fx-background-color: transparent;
 }
 
+.scroll-bar .increment-button,
+.scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-shape: "";
+}
+
 /* ========================================================================== */
 /*                           FOCUS INDICATORS                                  */
 /* ========================================================================== */
@@ -292,4 +357,19 @@
 .mfx-combo-box:focused {
     -fx-focus-color: transparent;
     -fx-background-insets: 0;
+}
+
+/* ========================================================================== */
+/*                               APP LOGO                                      */
+/* ========================================================================== */
+
+.app-logo {
+    -fx-effect: dropshadow(gaussian, -color-shadow-default, 10, 0, 0, 2);
+}
+
+/* Responsive logo */
+@media (max-width: 500px) {
+    .app-logo {
+        -fx-fit-height: 120px;
+    }
 }

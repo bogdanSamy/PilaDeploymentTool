@@ -18,6 +18,20 @@
         <gson.version>2.10.1</gson.version>
     </properties>
 
+    <repositories>
+        <repository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </repository>
+    </repositories>
+
+    <pluginRepositories>
+        <pluginRepository>
+            <id>central</id>
+            <url>https://repo.maven.apache.org/maven2</url>
+        </pluginRepository>
+    </pluginRepositories>
+
     <dependencies>
         <!-- JavaFX Core -->
         <dependency>
@@ -57,15 +71,11 @@
             <version>${gson.version}</version>
         </dependency>
 
-        <!-- Adaugă nfx-lib ca system dependency -->
         <dependency>
             <groupId>xss.it.nfx</groupId>
             <artifactId>nfx-core</artifactId>
-            <version>1.0.2</version>
-            <scope>system</scope>
-            <systemPath>${project.basedir}/libs/nfx-core-1.0.4.jar</systemPath>
+            <version>1.0.4</version>
         </dependency>
-
 
         <dependency>
             <groupId>io.github.palexdev</groupId>
@@ -73,7 +83,6 @@
             <version>11.17.0</version>
         </dependency>
 
-        <!-- Jackson for JSON serialization -->
         <!-- Jackson for JSON serialization -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -97,7 +106,6 @@
             <artifactId>controlsfx</artifactId>
             <version>11.2.1</version>
         </dependency>
-
     </dependencies>
 
     <build>
@@ -115,6 +123,73 @@
 
         <plugins>
             <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>21</source>
+                    <target>21</target>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.5.1</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <shadedArtifactAttached>true</shadedArtifactAttached>
+                            <shadedClassifierName>uber</shadedClassifierName>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+
+                            <transformers>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <mainClass>com.autodeploy.Main</mainClass>
+                                </transformer>
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                            </transformers>
+                            <filters>
+                                <filter>
+                                    <artifact>*:*</artifact>
+                                    <excludes>
+                                        <exclude>META-INF/*.SF</exclude>
+                                        <exclude>META-INF/*.DSA</exclude>
+                                        <exclude>META-INF/*.RSA</exclude>
+                                        <exclude>module-info.class</exclude>
+                                    </excludes>
+                                </filter>
+                            </filters>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- Maven Dependency Plugin - pentru backup -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <version>3.6.0</version>
+                <executions>
+                    <execution>
+                        <id>copy-dependencies</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>copy-dependencies</goal>
+                        </goals>
+                        <configuration>
+                            <outputDirectory>${project.build.directory}/libs</outputDirectory>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <!-- JavaFX Maven Plugin pentru development -->
+            <plugin>
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
@@ -124,6 +199,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>
-

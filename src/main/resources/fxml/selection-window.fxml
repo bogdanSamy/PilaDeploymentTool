@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.shape.SVGPath?>
+<?import io.github.palexdev.materialfx.controls.MFXButton?>
+
+<VBox prefHeight="650.0" prefWidth="500.0" minWidth="400.0" minHeight="600.0"
+      stylesheets="@../css/selection-window.css"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1">
+
+    <!-- Title Bar (NU SE SCHIMBĂ) -->
+    <AnchorPane styleClass="left" minHeight="40.0" maxHeight="40.0" prefHeight="40.0">
+        <HBox alignment="CENTER_LEFT" spacing="8" AnchorPane.leftAnchor="8.0"
+              AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0">
+            <ImageView fx:id="iconView" fitHeight="20.0" fitWidth="20.0"
+                       pickOnBounds="true" preserveRatio="true">
+                <Image url="@../logo.png" />
+            </ImageView>
+            <Label fx:id="title" styleClass="title" text="Auto Deploy Tool" />
+        </HBox>
+
+        <HBox alignment="CENTER_RIGHT" spacing="0"
+              AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0">
+            <Button fx:id="minBtn" mnemonicParsing="false" styleClass="hit-btn, minimize-btn">
+                <graphic>
+                    <SVGPath content="M1 7L1 8L14 8L14 7Z" styleClass="shape" />
+                </graphic>
+            </Button>
+            <Button fx:id="maxBtn" mnemonicParsing="false" styleClass="hit-btn, maximize-btn">
+                <graphic>
+                    <SVGPath fx:id="maxShape" styleClass="shape" />
+                </graphic>
+            </Button>
+            <Button fx:id="closeBtn" mnemonicParsing="false" styleClass="hit-btn, close-btn">
+                <graphic>
+                    <SVGPath content="M3.726563 3.023438L3.023438 3.726563L7.292969 8L3.023438 12.269531L3.726563 12.980469L8 8.707031L12.269531 12.980469L12.980469 12.269531L8.707031 8L12.980469 3.726563L12.269531 3.023438L8 7.292969Z" styleClass="shape" />
+                </graphic>
+            </Button>
+        </HBox>
+    </AnchorPane>
+
+    <!-- Content Area with ScrollPane -->
+    <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" styleClass="main-scroll-pane">
+        <VBox styleClass="content-area" spacing="0" alignment="TOP_CENTER">
+            <padding>
+                <Insets top="20" bottom="0" left="30" right="30"/>
+            </padding>
+
+            <!-- App Logo cu Shadow Effect -->
+            <ImageView fx:id="appLogoView" fitHeight="250.0" preserveRatio="true" pickOnBounds="true" styleClass="app-logo">
+                <Image url="@../logo.png" />
+            </ImageView>
+
+            <Region minHeight="20" VBox.vgrow="NEVER"/>
+
+            <!-- Server Selection -->
+            <VBox spacing="10" maxWidth="600" styleClass="selection-container">
+                <Label text="SERVER SELECTION" styleClass="selection-label"/>
+                <HBox spacing="12" alignment="CENTER_LEFT" styleClass="combo-row">
+                    <ComboBox fx:id="serverComboBox"
+                              promptText="Select a server..."
+                              styleClass="custom-combo"
+                              minWidth="150"
+                              prefWidth="400"
+                              maxWidth="Infinity"
+                              prefHeight="50"
+                              HBox.hgrow="ALWAYS"/>
+                    <MFXButton fx:id="manageServersBtn"
+                               text="Manage"
+                               styleClass="manage-button"
+                               minWidth="90"
+                               prefWidth="100"
+                               maxWidth="100"
+                               prefHeight="50"/>
+                </HBox>
+            </VBox>
+
+            <Region minHeight="15" VBox.vgrow="NEVER"/>
+
+            <!-- Project Selection -->
+            <VBox spacing="10" maxWidth="600" styleClass="selection-container">
+                <Label text="PROJECT SELECTION" styleClass="selection-label"/>
+                <HBox spacing="12" alignment="CENTER_LEFT" styleClass="combo-row">
+                    <ComboBox fx:id="projectComboBox"
+                              promptText="Select a project..."
+                              styleClass="custom-combo"
+                              minWidth="150"
+                              prefWidth="400"
+                              maxWidth="Infinity"
+                              prefHeight="50"
+                              HBox.hgrow="ALWAYS"/>
+                    <MFXButton fx:id="manageProjectsBtn"
+                               text="Manage"
+                               styleClass="manage-button"
+                               minWidth="90"
+                               prefWidth="100"
+                               maxWidth="100"
+                               prefHeight="50"/>
+                </HBox>
+            </VBox>
+
+            <Region minHeight="25" VBox.vgrow="NEVER"/>
+
+            <!-- Action Buttons -->
+            <VBox spacing="12" alignment="CENTER" maxWidth="600" styleClass="action-buttons-container">
+                <MFXButton fx:id="startDeployBtn"
+                           text="🚀 Start Deploy"
+                           styleClass="primary-button"
+                           minWidth="200"
+                           prefWidth="500"
+                           maxWidth="Infinity"
+                           prefHeight="60"
+                           disable="true"/>
+                <MFXButton fx:id="settingsBtn"
+                           text="Settings"
+                           styleClass="secondary-button"
+                           minWidth="200"
+                           prefWidth="500"
+                           maxWidth="Infinity"
+                           prefHeight="50"/>
+            </VBox>
+        </VBox>
+    </ScrollPane>
+
+</VBox>
