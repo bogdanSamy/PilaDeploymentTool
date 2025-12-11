@@ -1,14 +1,3 @@
-/*
- * Copyright © 2024. XTREME SOFTWARE SOLUTIONS
- *
- * All rights reserved. Unauthorized use, reproduction, or distribution
- * of this software or any portion of it is strictly prohibited and may
- * result in severe civil and criminal penalties. This code is the sole
- * proprietary of XTREME SOFTWARE SOLUTIONS.
- *
- * Commercialization, redistribution, and use without explicit permission
- * from XTREME SOFTWARE SOLUTIONS, are expressly forbidden.
- */
 package com.autodeploy.assets;
 
 import javafx.fxml.FXMLLoader;
@@ -18,10 +7,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 
-/**
- * @author XDSSWAR
- * Created on 04/17/2024
- */
 public class Assets {
 
     /**

@@ -46,7 +46,7 @@ public class DialogExample extends AbstractNfxUndecoratedWindow implements Initi
     public DialogExample(boolean hideFromTaskBar) {
         super(hideFromTaskBar);
         try {
-            Parent parent = Assets.load("/dialog.fxml", this);
+            Parent parent = Assets.load("/fxml/dialog.fxml", this);
             Scene scene = new Scene(parent);
             setScene(scene);
             setResizable(false);

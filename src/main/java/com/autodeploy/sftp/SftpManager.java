@@ -1,30 +1,10 @@
-/*
- * Copyright © 2024. XTREME SOFTWARE SOLUTIONS
- *
- * All rights reserved. Unauthorized use, reproduction, or distribution
- * of this software or any portion of it is strictly prohibited and may
- * result in severe civil and criminal penalties. This code is the sole
- * proprietary of XTREME SOFTWARE SOLUTIONS.
- *
- * Commercialization, redistribution, and use without explicit permission
- * from XTREME SOFTWARE SOLUTIONS, are expressly forbidden.
- */
-
 package com.autodeploy.sftp;
-
 import com.autodeploy.model.Server;
 import com.jcraft.jsch.*;
-
-import java.io.InputStream;
+import java.io.ByteArrayOutputStream;
 import java.util.Properties;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-/**
- * SFTP Manager for handling server connections
- *
- * @author XDSSWAR
- * Created on 11/19/2025
- */
 public class SftpManager {
 
     private Session session;
@@ -38,9 +18,6 @@ public class SftpManager {
         this.server = server;
     }
 
-    /**
-     * Connect to the server via SFTP
-     */
     public void connect() throws JSchException {
         JSch jsch = new JSch();
 
@@ -70,7 +47,6 @@ public class SftpManager {
         System.out.println("→ Connecting to: " + server.getHost() + ":" + server.getPort());
         System.out.println("→ Username: " + server.getUsername());
 
-        // Connect
         session.connect();
 
         // Open SFTP channel
@@ -84,9 +60,6 @@ public class SftpManager {
         startConnectionMonitoring();
     }
 
-    /**
-     * Disconnect from the server
-     */
     public void disconnect() {
         running.set(false);
 
@@ -97,15 +70,13 @@ public class SftpManager {
         if (sftpChannel != null && sftpChannel.isConnected()) {
             sftpChannel.disconnect();
         }
+
         if (session != null && session.isConnected()) {
             session.disconnect();
         }
-        System.out.println("✓ SFTP disconnected from: " + server.getHost());
+        System.out.println("SFTP disconnected from: " + server.getHost());
     }
 
-    /**
-     * Check if connected (with actual test)
-     */
     public boolean isConnected() {
         try {
             if (session == null || !session.isConnected()) {
@@ -125,9 +96,6 @@ public class SftpManager {
         }
     }
 
-    /**
-     * Start connection monitoring thread
-     */
     private void startConnectionMonitoring() {
         running.set(true);
 
@@ -144,7 +112,7 @@ public class SftpManager {
                             statusListener.onConnectionLost();
                         }
 
-                        break; // Exit monitoring loop
+                        break;
                     }
 
                 } catch (InterruptedException e) {
@@ -159,16 +127,10 @@ public class SftpManager {
         keepAliveThread.start();
     }
 
-    /**
-     * Set connection status listener
-     */
     public void setConnectionStatusListener(ConnectionStatusListener listener) {
         this.statusListener = listener;
     }
 
-    /**
-     * Upload file to server (creates parent directories if needed)
-     */
     public void uploadFile(String localPath, String remotePath) throws SftpException {
         if (!isConnected()) {
             throw new IllegalStateException("Not connected to server");
@@ -183,9 +145,6 @@ public class SftpManager {
         System.out.println("✓ Uploaded: " + localPath + " → " + remotePath);
     }
 
-    /**
-     * Create remote directory (recursive)
-     */
     private void createRemoteDirectory(String path) {
         try {
             sftpChannel.cd(path);
@@ -212,9 +171,6 @@ public class SftpManager {
         }
     }
 
-    /**
-     * Download file from server
-     */
     public void downloadFile(String remotePath, String localPath) throws SftpException {
         if (!isConnected()) {
             throw new IllegalStateException("Not connected to server");
@@ -222,66 +178,65 @@ public class SftpManager {
 
         System.out.println("📥 Downloading: " + remotePath + " → " + localPath);
 
-        // Download file
         sftpChannel.get(remotePath, localPath);
 
         System.out.println("✓ Downloaded successfully");
     }
 
-    /**
-     * Execute remote command via SSH
-     */
-    public String executeCommand(String command) throws JSchException, java.io.IOException {
-        if (!isConnected()) {
-            throw new IllegalStateException("Not connected to server");
+    public String executeCommand(String command) throws Exception {
+        System.out.println("SftpManager.executeCommand called with: " + command);
+
+        if (session == null || !session.isConnected()) {
+            throw new Exception("SSH session not connected");
         }
 
-        ChannelExec execChannel = (ChannelExec) session.openChannel("exec");
-        execChannel.setCommand(command);
+        ChannelExec channel = null;
+        try {
+            channel = (ChannelExec) session.openChannel("exec");
+            channel.setCommand(command);
 
-        InputStream in = execChannel.getInputStream();
-        execChannel.connect();
+            ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+            ByteArrayOutputStream errorStream = new ByteArrayOutputStream();
 
-        StringBuilder output = new StringBuilder();
-        byte[] tmp = new byte[1024];
-        while (true) {
-            while (in.available() > 0) {
-                int i = in.read(tmp, 0, 1024);
-                if (i < 0) break;
-                output.append(new String(tmp, 0, i));
-            }
-            if (execChannel.isClosed()) {
-                if (in.available() > 0) continue;
-                break;
-            }
-            try {
+            channel.setOutputStream(outputStream);
+            channel.setErrStream(errorStream);
+
+            channel.connect();
+
+            // Wait for command to complete
+            while (!channel.isClosed()) {
                 Thread.sleep(100);
-            } catch (Exception e) {
-                // Ignore
+            }
+
+            int exitCode = channel.getExitStatus();
+            String output = outputStream.toString("UTF-8");
+            String error = errorStream.toString("UTF-8");
+
+            System.out.println("Command exit code: " + exitCode);
+            System.out.println("Command stdout: " + output);
+            System.out.println("Command stderr: " + error);
+
+            if (exitCode != 0 && !error.isEmpty()) {
+                throw new Exception("Command failed with exit code " + exitCode + ": " + error);
+            }
+
+            return output;
+
+        } finally {
+            if (channel != null) {
+                channel.disconnect();
             }
         }
-
-        execChannel.disconnect();
-        return output.toString();
     }
 
-    /**
-     * Get SFTP channel
-     */
     public ChannelSftp getSftpChannel() {
         return sftpChannel;
     }
 
-    /**
-     * Get server info
-     */
     public Server getServer() {
         return server;
     }
 
-    /**
-     * Connection status listener interface
-     */
     public interface ConnectionStatusListener {
         void onConnectionLost();
     }

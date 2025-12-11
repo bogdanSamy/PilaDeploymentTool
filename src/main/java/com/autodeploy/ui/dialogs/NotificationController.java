@@ -23,120 +23,70 @@ import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.ResourceBundle;
-import java.util.function.Consumer;
 
-/**
- * Controller pentru notificări desktop care apar deasupra tuturor aplicațiilor
- */
 public class NotificationController extends AbstractNfxUndecoratedWindow implements Initializable {
 
-    @FXML
-    private VBox notificationContainer;
+    @FXML private VBox notificationContainer;
+    @FXML private Label titleLabel;
+    @FXML private Label messageLabel;
+    @FXML private Button closeBtn;
+    @FXML private HBox headerBox;
+    @FXML private VBox actionButtonContainer;
+    @FXML private Button actionButton;
 
-    @FXML
-    private Label titleLabel;
-
-    @FXML
-    private Label messageLabel;
-
-    @FXML
-    private Button closeBtn;
-
-    @FXML
-    private HBox headerBox;
-
-    @FXML
-    private VBox actionButtonContainer;
-
-    @FXML
-    private Button actionButton;
-
-    /**
-     * Înălțimea barei de titlu
-     */
     private static final double TITLE_BAR_HEIGHT = 0;
-
-    /**
-     * Lățimea notificării standard
-     */
     private static final double NOTIFICATION_WIDTH = 380;
-
-    /**
-     * Înălțimea notificării standard
-     */
     private static final double NOTIFICATION_HEIGHT = 120;
-
-    /**
-     * Lățimea notificării mari (pentru notificări importante)
-     */
     private static final double NOTIFICATION_WIDTH_LARGE = 450;
-
-    /**
-     * Înălțimea notificării mari (pentru notificări importante)
-     */
     private static final double NOTIFICATION_HEIGHT_LARGE = 150;
-
-    /**
-     * Durata de afișare a notificării (în secunde)
-     */
-    private double displayDuration = 5.0;
+    private double displayDuration = 3.5;
 
     private PauseTransition autoCloseTimer;
 
-    /**
-     * Tipuri de notificări
-     */
-    public enum NotificationType {
-        SUCCESS, ERROR, WARNING, INFO
-    }
-
-    /**
-     * Variante de notificări
-     */
     public enum NotificationVariant {
-        SIMPLE,           // Doar informație
-        WITH_ACTION,      // Informație + buton
-        IMPORTANT         // Mai mare și roșie
+        SIMPLE("info"),
+        WITH_ACTION("info"),
+        IMPORTANT("error");
+
+        private final String cssClass;
+
+        NotificationVariant(String cssClass) {
+            this.cssClass = cssClass;
+        }
+
+        public String getCssClass() {
+            return cssClass;
+        }
     }
 
     private NotificationVariant currentVariant = NotificationVariant.SIMPLE;
     private double currentWidth = NOTIFICATION_WIDTH;
     private double currentHeight = NOTIFICATION_HEIGHT;
 
-    /**
-     * Constructor
-     */
     public NotificationController() {
         super(true); // true = ascunde din taskbar
 
         try {
-            // Încarcă FXML
-            FXMLLoader loader = new FXMLLoader(getClass().getResource("/notification.fxml"));
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/fxml/notification.fxml"));
             loader.setController(this);
             Parent parent = loader.load();
 
-            // Crează scena cu fundal transparent
             Scene scene = new Scene(parent, NOTIFICATION_WIDTH, NOTIFICATION_HEIGHT);
             scene.setFill(Color.TRANSPARENT);
 
-            // Încarcă CSS
-            URL cssUrl = getClass().getResource("/notification.css");
+            URL cssUrl = getClass().getResource("/css/notification.css");
             if (cssUrl != null) {
                 scene.getStylesheets().add(cssUrl.toExternalForm());
             }
 
             setScene(scene);
 
-            // Configurează fereastra
             initStyle(StageStyle.TRANSPARENT);
             setResizable(false);
             setAlwaysOnTop(true);
 
-            // IMPORTANT: Setează dimensiunile ferestrei
             setWidth(NOTIFICATION_WIDTH);
             setHeight(NOTIFICATION_HEIGHT);
-
-            System.out.println("NotificationController inițializat cu succes!");
 
         } catch (IOException e) {
             e.printStackTrace();
@@ -146,244 +96,181 @@ public class NotificationController extends AbstractNfxUndecoratedWindow impleme
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
-        System.out.println("Initialize apelat!");
-
-        // Configurează butonul de închidere
         if (closeBtn != null) {
-            closeBtn.setOnAction(event -> {
-                System.out.println("Buton închidere apăsat!");
-                closeWithAnimation();
-            });
+            closeBtn.setOnAction(event -> closeWithAnimation());
         }
 
-        // Ascunde butonul de acțiune implicit
         if (actionButtonContainer != null) {
             actionButtonContainer.setVisible(false);
             actionButtonContainer.setManaged(false);
         }
 
-        // Blochează orice încercare de drag prin consumarea evenimentelor de mouse
         if (notificationContainer != null) {
-            notificationContainer.setOnMousePressed(event -> {
-                event.consume();
-            });
-
-            notificationContainer.setOnMouseDragged(event -> {
-                event.consume();
-            });
+            notificationContainer.setOnMousePressed(event -> event.consume());
+            notificationContainer.setOnMouseDragged(event -> event.consume());
         }
 
-        // Blochează și la nivel de scenă
         if (getScene() != null) {
-            getScene().setOnMousePressed(event -> {
-                event.consume();
-            });
-
-            getScene().setOnMouseDragged(event -> {
-                event.consume();
-            });
+            getScene().setOnMousePressed(event -> event.consume());
+            getScene().setOnMouseDragged(event -> event.consume());
         }
     }
 
     /**
-     * Afișează notificarea SIMPLĂ (doar informație)
-     *
-     * @param title Titlul notificării
-     * @param message Mesajul notificării
+     * Show simple notification that auto-closes
      */
     public void showSimpleNotification(String title, String message) {
-        showSimpleNotification(title, message, NotificationType.INFO);
-    }
-
-    /**
-     * Afișează notificarea SIMPLĂ cu tip specific
-     *
-     * @param title Titlul notificării
-     * @param message Mesajul notificării
-     * @param type Tipul notificării
-     */
-    public void showSimpleNotification(String title, String message, NotificationType type) {
         currentVariant = NotificationVariant.SIMPLE;
         currentWidth = NOTIFICATION_WIDTH;
         currentHeight = NOTIFICATION_HEIGHT;
 
-        // Ascunde butonul de acțiune
         if (actionButtonContainer != null) {
             actionButtonContainer.setVisible(false);
             actionButtonContainer.setManaged(false);
         }
 
-        showNotificationInternal(title, message, type);
-    }
+        if (messageLabel != null) {
+            messageLabel.setVisible(true);
+            messageLabel.setManaged(true);
+        }
 
-    // Adaugă această metodă actualizată în NotificationController.java
-
-    /**
-     * Afișează notificarea CU BUTON DE ACȚIUNE (fără mesaj, doar titlu și buton)
-     *
-     * @param title Titlul notificării
-     * @param buttonText Textul butonului
-     * @param onButtonClick Acțiunea la apăsarea butonului
-     */
-    public void showNotificationWithAction(String title, String buttonText, Runnable onButtonClick) {
-        showNotificationWithAction(title, buttonText, onButtonClick, NotificationType.INFO);
+        // Standard notifications auto-close
+        showNotificationInternal(title, message, currentVariant, true);
     }
 
     /**
-     * Afișează notificarea CU BUTON DE ACȚIUNE și tip specific (fără mesaj)
-     *
-     * @param title Titlul notificării
-     * @param buttonText Textul butonului
-     * @param onButtonClick Acțiunea la apăsarea butonului
-     * @param type Tipul notificării
+     * Specific method for RESTART PENDING (Requester view)
+     * Does NOT auto-close because we need to see the countdown
      */
-    public void showNotificationWithAction(String title, String buttonText,
-                                           Runnable onButtonClick, NotificationType type) {
+    public void showPersistentNotification(String title, String message) {
+        currentVariant = NotificationVariant.SIMPLE;
+        currentWidth = NOTIFICATION_WIDTH;
+        currentHeight = NOTIFICATION_HEIGHT;
+
+        if (actionButtonContainer != null) {
+            actionButtonContainer.setVisible(false);
+            actionButtonContainer.setManaged(false);
+        }
+
+        if (messageLabel != null) {
+            messageLabel.setVisible(true);
+            messageLabel.setManaged(true);
+        }
+
+        showNotificationInternal(title, message, currentVariant, false);
+    }
+
+    public void showDownloadSuccessNotification(String fileName, Runnable onButtonClick) {
         currentVariant = NotificationVariant.WITH_ACTION;
         currentWidth = NOTIFICATION_WIDTH;
         currentHeight = NOTIFICATION_HEIGHT;
 
-        // ASCUNDE mesajul complet
         if (messageLabel != null) {
             messageLabel.setVisible(false);
             messageLabel.setManaged(false);
         }
 
-        // Configurează și afișează butonul de acțiune
         if (actionButtonContainer != null && actionButton != null) {
             actionButtonContainer.setVisible(true);
             actionButtonContainer.setManaged(true);
-            actionButton.setText(buttonText);
+            actionButton.setText("Open With...");
             actionButton.setOnAction(event -> {
-                if (onButtonClick != null) {
-                    onButtonClick.run();
-                }
+                if (onButtonClick != null) onButtonClick.run();
                 closeWithAnimation();
             });
         }
 
-        showNotificationInternal(title, "", type); // Mesaj gol
+        showNotificationInternal("File downloaded: " + fileName, "", currentVariant, true);
     }
 
-    /**
-     * Afișează notificarea IMPORTANTĂ (mai mare și roșie)
-     *
-     * @param title Titlul notificării
-     * @param message Mesajul notificării
-     */
-    public void showImportantNotification(String title, String message) {
+    public void showRestartServerNotification(String message, Runnable onButtonClick) {
         currentVariant = NotificationVariant.IMPORTANT;
         currentWidth = NOTIFICATION_WIDTH_LARGE;
         currentHeight = NOTIFICATION_HEIGHT_LARGE;
 
-        // Ascunde butonul de acțiune
-        if (actionButtonContainer != null) {
-            actionButtonContainer.setVisible(false);
-            actionButtonContainer.setManaged(false);
+        if (messageLabel != null) {
+            messageLabel.setVisible(true);
+            messageLabel.setManaged(true);
         }
 
-        // Adaugă clasa CSS pentru notificare importantă
-        if (notificationContainer != null) {
-            notificationContainer.getStyleClass().add("important");
+        if (actionButtonContainer != null && actionButton != null) {
+            actionButtonContainer.setVisible(true);
+            actionButtonContainer.setManaged(true);
+            actionButton.setText("Reject");
+            actionButton.setOnAction(event -> {
+                if (onButtonClick != null) onButtonClick.run();
+                closeWithAnimation();
+            });
         }
 
-        showNotificationInternal(title, message, NotificationType.ERROR);
+        // Restart Reject option = NO auto-close
+        showNotificationInternal("Restart Server", message, currentVariant, false);
     }
 
-    /**
-     * Metodă internă pentru afișarea notificării
-     */
-    private void showNotificationInternal(String title, String message, NotificationType type) {
-        System.out.println("showNotification apelat cu: " + title + " - " + message + " - " + type + " - " + currentVariant);
+    private void showNotificationInternal(String title, String message, NotificationVariant variant, boolean autoClose) {
+        if (titleLabel != null) titleLabel.setText(title);
+        if (messageLabel != null) messageLabel.setText(message);
 
-        if (titleLabel != null) {
-            titleLabel.setText(title);
-        }
-        if (messageLabel != null) {
-            messageLabel.setText(message);
-        }
-
-        // Aplică clasa CSS corespunzătoare tipului
         if (notificationContainer != null) {
             notificationContainer.getStyleClass().removeAll("success", "error", "warning", "info", "important");
-            notificationContainer.getStyleClass().add(type.name().toLowerCase());
-
-            // Adaugă clasa important dacă e cazul
-            if (currentVariant == NotificationVariant.IMPORTANT) {
+            notificationContainer.getStyleClass().add(variant.getCssClass());
+            if (variant == NotificationVariant.IMPORTANT) {
                 notificationContainer.getStyleClass().add("important");
             }
         }
 
-        // Actualizează dimensiunile ferestrei și scenei
         setWidth(currentWidth);
         setHeight(currentHeight);
         if (getScene() != null) {
             getScene().getRoot().resize(currentWidth, currentHeight);
         }
 
-        // Poziționează notificarea
         positionNotification();
 
-        // Anulează timer-ul anterior dacă există
         if (autoCloseTimer != null) {
             autoCloseTimer.stop();
         }
 
-        // Afișează fereastra
-        System.out.println("Afișare fereastră la poziția: X=" + getX() + ", Y=" + getY());
         show();
         toFront();
-
-        // Blochează dragul și după afișare
+        requestFocus();
         blockDragging();
 
-        // Animație de fade in
         if (getScene() != null && getScene().getRoot() != null) {
             getScene().getRoot().setOpacity(0);
             FadeTransition fadeIn = new FadeTransition(Duration.millis(300), getScene().getRoot());
             fadeIn.setFromValue(0);
             fadeIn.setToValue(1);
-            fadeIn.play();
-        }
 
-        // Auto-închidere după durata specificată
+            // ONLY start timer if autoClose is true
+            if (autoClose) {
+                fadeIn.setOnFinished(fadeEvent -> startAutoCloseTimer());
+            }
+            fadeIn.play();
+        } else {
+            // ONLY start timer if autoClose is true
+            if (autoClose) {
+                startAutoCloseTimer();
+            }
+        }
+    }
+
+    private void startAutoCloseTimer() {
+        System.out.println("🕐 Timer start: " + displayDuration + "s");
         autoCloseTimer = new PauseTransition(Duration.seconds(displayDuration));
-        autoCloseTimer.setOnFinished(event -> {
-            System.out.println("Auto-închidere după " + displayDuration + " secunde");
-            closeWithAnimation();
-        });
+        autoCloseTimer.setOnFinished(event -> closeWithAnimation());
         autoCloseTimer.play();
     }
 
-    /**
-     * Afișează notificarea cu animație (menține compatibilitatea cu codul vechi)
-     *
-     * @param title Titlul notificării
-     * @param message Mesajul notificării
-     */
+    // Legacy support
     public void showNotification(String title, String message) {
-        showSimpleNotification(title, message, NotificationType.INFO);
+        showSimpleNotification(title, message);
     }
 
-    /**
-     * Afișează notificarea cu animație și tip specific (menține compatibilitatea cu codul vechi)
-     *
-     * @param title Titlul notificării
-     * @param message Mesajul notificării
-     * @param type Tipul notificării
-     */
-    public void showNotification(String title, String message, NotificationType type) {
-        showSimpleNotification(title, message, type);
-    }
-
-    /**
-     * Blochează funcționalitatea de drag
-     */
     private void blockDragging() {
         if (getScene() != null) {
             getScene().setOnMousePressed(event -> event.consume());
             getScene().setOnMouseDragged(event -> event.consume());
-
             if (getScene().getRoot() != null) {
                 getScene().getRoot().setOnMousePressed(event -> event.consume());
                 getScene().getRoot().setOnMouseDragged(event -> event.consume());
@@ -391,61 +278,36 @@ public class NotificationController extends AbstractNfxUndecoratedWindow impleme
         }
     }
 
-    /**
-     * Închide notificarea cu animație de fade out
-     */
     private void closeWithAnimation() {
         if (getScene() != null && getScene().getRoot() != null) {
             FadeTransition fadeOut = new FadeTransition(Duration.millis(300), getScene().getRoot());
             fadeOut.setFromValue(1);
             fadeOut.setToValue(0);
-            fadeOut.setOnFinished(event -> {
-                close();
-                System.out.println("Fereastră închisă!");
-            });
+            fadeOut.setOnFinished(event -> close());
             fadeOut.play();
         } else {
             close();
         }
     }
 
-    /**
-     * Poziționează notificarea în colțul din dreapta jos al ecranului
-     */
     private void positionNotification() {
         Screen screen = Screen.getPrimary();
         double screenWidth = screen.getVisualBounds().getWidth();
         double screenHeight = screen.getVisualBounds().getHeight();
-
-        // Margine de 20 pixeli de la marginea ecranului
         double margin = 20;
-
         double xPos = screenWidth - currentWidth - margin;
         double yPos = screenHeight - currentHeight - margin;
-
         setX(xPos);
         setY(yPos);
-
-        System.out.println("Poziționare notificare: X=" + xPos + ", Y=" + yPos);
-        System.out.println("Dimensiuni: " + currentWidth + "x" + currentHeight);
     }
 
-    /**
-     * Setează durata de afișare a notificării
-     *
-     * @param seconds Durata în secunde
-     */
     public void setDisplayDuration(double seconds) {
         this.displayDuration = seconds;
     }
 
     @Override
-    public List<HitSpot> getHitSpots() {
-        return new ArrayList<>();
-    }
+    public List<HitSpot> getHitSpots() { return new ArrayList<>(); }
 
     @Override
-    public double getTitleBarHeight() {
-        return TITLE_BAR_HEIGHT;
-    }
+    public double getTitleBarHeight() { return TITLE_BAR_HEIGHT; }
 }

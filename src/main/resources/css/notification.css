@@ -185,3 +185,15 @@
 .notification-container.important .notification-content {
     -fx-padding: 8px 15px 20px 15px;
 }
+
+.notification-container.important .action-button-container {
+    -fx-padding: 5px 15px 25px 15px; /* Increased bottom padding from 10px to 25px */
+}
+
+.notification-container.important .action-btn {
+    -fx-padding: 8px 25px;    /* Reduced from 12px 40px */
+    -fx-min-width: 150px;     /* Reduced from 200px */
+    -fx-pref-width: 180px;    /* Reduced from 280px */
+    -fx-font-size: 14px;      /* Optional: Slightly smaller font if needed */
+}
+

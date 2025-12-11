@@ -1,15 +1,3 @@
-/*
- * Copyright © 2024. XTREME SOFTWARE SOLUTIONS
- *
- * All rights reserved. Unauthorized use, reproduction, or distribution
- * of this software or any portion of it is strictly prohibited and may
- * result in severe civil and criminal penalties. This code is the sole
- * proprietary of XTREME SOFTWARE SOLUTIONS.
- *
- * Commercialization, redistribution, and use without explicit permission
- * from XTREME SOFTWARE SOLUTIONS, are expressly forbidden.
- */
-
 package com.autodeploy.ui.dialogs;
 
 import com.autodeploy.assets.Assets;
@@ -34,65 +22,28 @@ import java.nio.file.Paths;
 import java.util.List;
 import java.util.ResourceBundle;
 
-/**
- * @author XDSSWAR
- * Created on 11/19/2025
- */
 public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Initializable {
 
-    @FXML
-    private Button closeBtn;
+    @FXML private Button closeBtn;
+    @FXML private TextField antPathField;
+    @FXML private TextField urlSuffixField;
+    @FXML private TextField downloadFolderField;
+    @FXML private TextField remoteLogPathField;
+    @FXML private TextField usernameField;
+    @FXML private ComboBox<String> themeComboBox;
+    @FXML private Button browseAntBtn;
+    @FXML private Button browseDownloadBtn;
+    @FXML private Button saveBtn;
+    @FXML private Button cancelBtn;
 
-    @FXML
-    private TextField antPathField;
-
-    @FXML
-    private TextField urlSuffixField;
-
-    @FXML
-    private TextField downloadFolderField;
-
-    @FXML
-    private TextField remoteLogPathField;
-
-    @FXML
-    private TextField usernameField;
-
-    @FXML
-    private ComboBox<String> themeComboBox;
-
-    @FXML
-    private Button browseAntBtn;
-
-    @FXML
-    private Button browseDownloadBtn;
-
-    @FXML
-    private Button saveBtn;
-
-    @FXML
-    private Button cancelBtn;
-
-    /**
-     * The height of the title bar.
-     */
     private static final int TITLE_BAR_HEIGHT = 30;
-
-    /**
-     * Application configuration instance
-     */
     private final ApplicationConfig config;
 
-    /**
-     * Constructs a new instance of SettingsDialog with an option to hide from the taskbar.
-     *
-     * @param hideFromTaskBar Indicates whether the dialog should be hidden from the taskbar.
-     */
     public SettingsDialog(boolean hideFromTaskBar) {
         super(hideFromTaskBar);
         this.config = ApplicationConfig.getInstance();
         try {
-            Parent parent = Assets.load("/settings.fxml", this);
+            Parent parent = Assets.load("/fxml/settings.fxml", this);
             Scene scene = new Scene(parent);
             setScene(scene);
             setResizable(false);
@@ -103,29 +54,21 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
 
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        // Initialize theme ComboBox
+
         themeComboBox.getItems().addAll(ThemeManager.getAvailableThemes());
 
-        // Load existing configuration
         loadConfiguration();
 
-        // Close button
         closeBtn.setOnAction(event -> close());
-
-        // Cancel button
         cancelBtn.setOnAction(event -> close());
-
-        // Save button
         saveBtn.setOnAction(event -> {
             saveConfiguration();
             close();
         });
 
-        // Browse buttons
         browseAntBtn.setOnAction(event -> browseForFile(antPathField, "Select Ant Path"));
         browseDownloadBtn.setOnAction(event -> browseForFolder(downloadFolderField, "Select Download Folder"));
 
-        // Theme change listener - apply immediately when selected
         themeComboBox.setOnAction(event -> {
             String selectedTheme = themeComboBox.getValue();
             if (selectedTheme != null && !selectedTheme.isEmpty()) {
@@ -134,22 +77,18 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
         });
     }
 
-    /**
-     * Browse for a file
-     */
     private void browseForFile(TextField targetField, String title) {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle(title);
 
-        // Set initial directory if path exists
         String currentPath = targetField.getText();
         if (!currentPath.isEmpty()) {
             try {
                 if (Files.exists(Paths.get(currentPath).getParent())) {
                     fileChooser.setInitialDirectory(Paths.get(currentPath).getParent().toFile());
                 }
-            } catch (Exception e) {
-                // Ignore if path is invalid
+            } catch (Exception ignored) {
+
             }
         }
 
@@ -159,22 +98,18 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
         }
     }
 
-    /**
-     * Browse for a folder
-     */
     private void browseForFolder(TextField targetField, String title) {
         DirectoryChooser directoryChooser = new DirectoryChooser();
         directoryChooser.setTitle(title);
 
-        // Set initial directory if path exists
         String currentPath = targetField.getText();
         if (!currentPath.isEmpty()) {
             try {
                 if (Files.exists(Paths.get(currentPath))) {
                     directoryChooser.setInitialDirectory(Paths.get(currentPath).toFile());
                 }
-            } catch (Exception e) {
-                // Ignore if path is invalid
+            } catch (Exception ignored) {
+
             }
         }
 
@@ -184,9 +119,6 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
         }
     }
 
-    /**
-     * Load configuration from ApplicationConfig
-     */
     private void loadConfiguration() {
         antPathField.setText(config.getAntPath());
         urlSuffixField.setText(config.getBrowserUrlSuffix());
@@ -194,37 +126,25 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
         remoteLogPathField.setText(config.getRemoteLogPath());
         usernameField.setText(config.getUsername());
 
-        // Load theme
         String savedTheme = config.getTheme();
         themeComboBox.setValue(savedTheme);
     }
 
-    /**
-     * Save configuration to ApplicationConfig
-     */
     private void saveConfiguration() {
-        // Set all values
         config.setAntPath(antPathField.getText().trim());
         config.setBrowserUrlSuffix(urlSuffixField.getText().trim());
         config.setLocalDownloadDir(downloadFolderField.getText().trim());
         config.setRemoteLogPath(remoteLogPathField.getText().trim());
         config.setUsername(usernameField.getText().trim());
 
-        // Save theme
         String selectedTheme = themeComboBox.getValue();
         if (selectedTheme != null && !selectedTheme.isEmpty()) {
             config.setTheme(selectedTheme);
         }
 
-        // Persist to file
         config.save();
     }
 
-    /**
-     * Retrieves the list of hit spots.
-     *
-     * @return The list of hit spots.
-     */
     @Override
     public List<HitSpot> getHitSpots() {
         HitSpot spot = HitSpot.builder()
@@ -245,11 +165,6 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
         return List.of(spot);
     }
 
-    /**
-     * Retrieves the height of the title bar.
-     *
-     * @return The height of the title bar.
-     */
     @Override
     public double getTitleBarHeight() {
         return TITLE_BAR_HEIGHT;

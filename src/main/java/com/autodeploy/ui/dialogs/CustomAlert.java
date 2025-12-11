@@ -1,15 +1,3 @@
-/*
- * Copyright © 2024. XTREME SOFTWARE SOLUTIONS
- *
- * All rights reserved. Unauthorized use, reproduction, or distribution
- * of this software or any portion of it is strictly prohibited and may
- * result in severe civil and criminal penalties. This code is the sole
- * proprietary of XTREME SOFTWARE SOLUTIONS.
- *
- * Commercialization, redistribution, and use without explicit permission
- * from XTREME SOFTWARE SOLUTIONS, are expressly forbidden.
- */
-
 package com.autodeploy.ui.dialogs;
 
 import com.autodeploy.assets.Assets;
@@ -20,6 +8,8 @@ import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.shape.SVGPath;
+import javafx.stage.Modality;
+import javafx.stage.Window;
 import xss.it.nfx.AbstractNfxUndecoratedWindow;
 import xss.it.nfx.HitSpot;
 
@@ -28,40 +18,17 @@ import java.net.URL;
 import java.util.List;
 import java.util.ResourceBundle;
 
-/**
- * Custom Alert Dialog
- *
- * @author XDSSWAR
- * Created on 11/19/2025
- */
 public class CustomAlert extends AbstractNfxUndecoratedWindow implements Initializable {
 
-    @FXML
-    private Button closeBtn;
+    @FXML private Button closeBtn;
+    @FXML private SVGPath iconPath;
+    @FXML private Label titleLabel;
+    @FXML private Label messageLabel;
+    @FXML private Button okBtn;
+    @FXML private Button cancelBtn;
 
-    @FXML
-    private SVGPath iconPath;
-
-    @FXML
-    private Label titleLabel;
-
-    @FXML
-    private Label messageLabel;
-
-    @FXML
-    private Button okBtn;
-
-    @FXML
-    private Button cancelBtn;
-
-    /**
-     * The height of the title bar.
-     */
     private static final int TITLE_BAR_HEIGHT = 30;
 
-    /**
-     * Alert type
-     */
     public enum AlertType {
         ERROR, INFO, WARNING, CONFIRMATION
     }
@@ -72,7 +39,7 @@ public class CustomAlert extends AbstractNfxUndecoratedWindow implements Initial
     private boolean confirmed = false;
 
     /**
-     * Constructs a new CustomAlert
+     * Constructs a new CustomAlert (application-modal)
      *
      * @param alertType The type of alert
      * @param title The alert title
@@ -85,9 +52,37 @@ public class CustomAlert extends AbstractNfxUndecoratedWindow implements Initial
         this.message = message;
 
         try {
-            Parent parent = Assets.load("/custom-alert.fxml", this);
+            Parent parent = Assets.load("/fxml/custom-alert.fxml", this);
             Scene scene = new Scene(parent);
             setScene(scene);
+            // Ensure dialogs are modal by default when no explicit owner is set
+            initModality(Modality.APPLICATION_MODAL);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Constructs a new CustomAlert owned by the given window, shown as a window-modal dialog.
+     * This ensures proper modality and centering relative to the owner window.
+     */
+    public CustomAlert(Window owner, AlertType alertType, String title, String message) {
+        super(true); // Hide from taskbar
+        this.alertType = alertType;
+        this.title = title;
+        this.message = message;
+
+        try {
+            Parent parent = Assets.load("/fxml/custom-alert.fxml", this);
+            Scene scene = new Scene(parent);
+            setScene(scene);
+            // Set owner and modality to keep background overlay active until dialog closes
+            if (owner != null) {
+                initOwner(owner);
+                initModality(Modality.WINDOW_MODAL);
+            } else {
+                initModality(Modality.APPLICATION_MODAL);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -172,6 +167,26 @@ public class CustomAlert extends AbstractNfxUndecoratedWindow implements Initial
     }
 
     /**
+     * Show confirmation alert centered on the owner window
+     *
+     * @param owner The parent window to center on (can be null, defaults to center screen)
+     * @param title Title of the alert
+     * @param message Message content
+     * @return true if user confirmed
+     */
+    public static boolean showConfirmation(Window owner, String title, String message) {
+        // Use owner-aware constructor to enforce window modality and automatic centering
+        CustomAlert alert = new CustomAlert(owner, AlertType.CONFIRMATION, title, message);
+
+        if (owner == null) {
+            alert.centerOnScreen();
+        }
+
+        alert.showAndWait();
+        return alert.isConfirmed();
+    }
+
+    /**
      * Show error alert
      */
     public static void showError(String title, String message) {
@@ -198,15 +213,6 @@ public class CustomAlert extends AbstractNfxUndecoratedWindow implements Initial
         alert.showAndWait();
     }
 
-    /**
-     * Show confirmation alert
-     */
-    public static boolean showConfirmation(String title, String message) {
-        CustomAlert alert = new CustomAlert(AlertType.CONFIRMATION, title, message);
-        alert.centerOnScreen();
-        alert.showAndWait();
-        return alert.isConfirmed();
-    }
 
     @Override
     public List<HitSpot> getHitSpots() {

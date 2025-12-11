@@ -48,7 +48,7 @@ public class MenuWindow extends AbstractNfxUndecoratedWindow implements Initiali
 
     public MenuWindow() {
         try {
-            Parent parent = Assets.load("/menu-window.fxml", this);
+            Parent parent = Assets.load("/fxml/menu-window.fxml", this);
             Scene scene = new Scene(parent);
             setScene(scene);
         } catch (IOException e) {

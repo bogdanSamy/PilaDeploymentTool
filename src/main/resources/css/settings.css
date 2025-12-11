@@ -11,7 +11,7 @@
 }
 
 /* Close button */
-#closeBtn {
+.close-btn-settings {
     -fx-min-width: 46px;
     -fx-max-width: 46px;
     -fx-pref-width: 46px;
@@ -29,34 +29,98 @@
     -fx-fill: -color-fg-default;
 }
 
-.hit-close-btn,
-#closeBtn:hover {
+.close-btn-settings:hover {
     -fx-background-color: #C42B1C;
 }
 
-#closeBtn:hover .btn-shape {
+.close-btn-settings:hover .btn-shape {
     -fx-fill: white;
+}
+
+/* ========================================================================== */
+/*                            SCROLL PANE                                      */
+/* ========================================================================== */
+
+.settings-scroll-pane {
+    -fx-background-color: transparent;
+    -fx-background: transparent;
+}
+
+.settings-scroll-pane > .viewport {
+    -fx-background-color: -color-bg-default;
+}
+
+.settings-scroll-pane > .scroll-bar:vertical {
+    -fx-background-color: -color-bg-default;
+    -fx-pref-width: 12px;
+}
+
+.settings-scroll-pane > .scroll-bar:horizontal {
+    -fx-background-color: -color-bg-default;
+    -fx-pref-height: 12px;
+}
+
+.settings-scroll-pane .scroll-bar .thumb {
+    -fx-background-color: -color-border-default;
+    -fx-background-radius: 4px;
+}
+
+.settings-scroll-pane .scroll-bar .thumb:hover {
+    -fx-background-color: -color-fg-muted;
+}
+
+.settings-scroll-pane .scroll-bar .track {
+    -fx-background-color: transparent;
+}
+
+.settings-scroll-pane .scroll-bar .increment-button,
+.settings-scroll-pane .scroll-bar .decrement-button {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+    -fx-shape: "";
 }
 
 /* ========================================================================== */
 /*                               CONTENT AREA                                  */
 /* ========================================================================== */
 
+/* Field containers for responsive layout */
+.field-container {
+    -fx-min-width: 280px;
+    -fx-max-width: 440px;
+    -fx-pref-width: 440px;
+}
+
+.input-row {
+    -fx-min-width: 280px;
+}
+
+.button-container {
+    -fx-min-width: 280px;
+}
+
 /* Title */
 .title-label {
     -fx-text-fill: -color-accent-emphasis;
-    -fx-font-size: 48px;
+    -fx-font-size: 38px;
     -fx-font-weight: bold;
-    -fx-padding: 0 0 20px 0;
+    -fx-padding: 0 0 0px 0;
     -fx-effect: dropshadow(gaussian, -color-shadow-default, 10, 0, 0, 2);
+}
+
+/* Responsive title for small screens */
+@media (max-width: 450px) {
+    .title-label {
+        -fx-font-size: 32px;
+    }
 }
 
 /* Field labels */
 .field-label {
     -fx-text-fill: -color-fg-default;
-    -fx-font-size: 14px;
+    -fx-font-size: 13px;
     -fx-font-weight: 700;
-    -fx-padding: 0 0 8px 4px;
+    -fx-padding: 0 0 4px 2px;
 }
 
 /* ========================================================================== */
@@ -66,19 +130,26 @@
 .field-input {
     -fx-background-color: -color-bg-default;
     -fx-text-fill: -color-fg-default;
-    -fx-font-size: 16px;
+    -fx-font-size: 15px;
     -fx-font-weight: 700;
-    -fx-pref-height: 52px;
+    -fx-min-height: 45px;
+    -fx-pref-height: 45px;
+    -fx-max-height: 45px;
     -fx-background-radius: 8px;
     -fx-border-radius: 8px;
-    -fx-border-color: #0969da;
+    -fx-border-color: -color-accent-emphasis;
     -fx-border-width: 2px;
     -fx-padding: 0 12px;
 }
 
 .field-input:focused {
-    -fx-border-color: #0550ae;
+    -fx-border-color: -color-accent-emphasis;
     -fx-border-width: 3px;
+    -fx-background-color: -color-bg-subtle;
+}
+
+.field-input:hover {
+    -fx-border-color: -color-accent-fg;
     -fx-background-color: -color-bg-subtle;
 }
 
@@ -88,24 +159,32 @@
 
 .theme-combo {
     -fx-background-color: -color-bg-default;
-    -fx-pref-height: 52px;
+    -fx-min-height: 45px;
+    -fx-pref-height: 45px;
+    -fx-max-height: 45px;
     -fx-background-radius: 8px;
     -fx-border-radius: 8px;
-    -fx-border-color: #0969da;
+    -fx-border-color: -color-accent-emphasis;
     -fx-border-width: 2px;
+    -fx-cursor: hand;
 }
 
 .theme-combo .list-cell {
     -fx-background-color: -color-bg-default;
-    -fx-text-fill: -color-fg-default;
-    -fx-font-size: 16px;
+    -fx-text-fill: -color-accent-emphasis;
+    -fx-font-size: 15px;
     -fx-font-weight: 700;
     -fx-padding: 8px 12px;
 }
 
 .theme-combo:focused {
-    -fx-border-color: #0550ae;
+    -fx-border-color: -color-accent-emphasis;
     -fx-border-width: 3px;
+    -fx-background-color: -color-bg-subtle;
+}
+
+.theme-combo:hover {
+    -fx-border-color: -color-accent-fg;
     -fx-background-color: -color-bg-subtle;
 }
 
@@ -116,10 +195,6 @@
 
 .theme-combo .arrow {
     -fx-background-color: -color-fg-default;
-}
-
-.theme-combo:hover {
-    -fx-border-color: -color-accent-emphasis;
 }
 
 /* ComboBox Popup */
@@ -150,13 +225,14 @@
     -fx-background-radius: 8px;
 
     -fx-text-fill: -color-fg-default;
-    -fx-font-size: 16px;
+    -fx-font-size: 15px;
     -fx-font-weight: 700;
 
-    -fx-min-width: 100px;
-    -fx-pref-width: 100px;
-    -fx-min-height: 52px;
-    -fx-pref-height: 52px;
+    -fx-min-width: 85px;
+    -fx-max-width: 85px;
+    -fx-min-height: 45px;
+    -fx-pref-height: 45px;
+    -fx-max-height: 45px;
 
     -fx-border-color: -color-border-default;
     -fx-border-width: 1.5px;
@@ -184,16 +260,16 @@
 
 /* Base style for action buttons */
 .action-btn {
-    -fx-font-size: 16px;
+    -fx-font-size: 15px;
     -fx-font-weight: 700;
-    -fx-min-width: 120px;
-    -fx-pref-width: 120px;
-    -fx-min-height: 52px;
-    -fx-pref-height: 52px;
+    -fx-min-width: 105px;
+    -fx-min-height: 48px;
+    -fx-pref-height: 48px;
+    -fx-max-height: 48px;
     -fx-background-radius: 8px;
     -fx-border-radius: 8px;
     -fx-cursor: hand;
-    -fx-padding: 14px 32px;
+    -fx-padding: 10px 20px;
 }
 
 /* Save button - PRIMARY */

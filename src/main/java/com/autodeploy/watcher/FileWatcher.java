@@ -1,31 +1,12 @@
-/*
- * Copyright © 2024. XTREME SOFTWARE SOLUTIONS
- *
- * All rights reserved. Unauthorized use, reproduction, or distribution
- * of this software or any portion of it is strictly prohibited and may
- * result in severe civil and criminal penalties. This code is the sole
- * proprietary of XTREME SOFTWARE SOLUTIONS.
- *
- * Commercialization, redistribution, and use without explicit permission
- * from XTREME SOFTWARE SOLUTIONS, are expressly forbidden.
- */
-
 package com.autodeploy.watcher;
 
 import javafx.application.Platform;
-
 import java.io.File;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
-/**
- * File Watcher utility for monitoring directory changes
- *
- * @author XDSSWAR
- * Created on 11/19/2025
- */
 public class FileWatcher {
 
     private final Path directoryPath;
@@ -48,9 +29,6 @@ public class FileWatcher {
         this.recursive = recursive;
     }
 
-    /**
-     * Start watching the directory
-     */
     public void start() {
         if (running) {
             return;
@@ -69,9 +47,6 @@ public class FileWatcher {
         System.out.println("✓ Started watching: " + directoryPath + " for *" + fileExtension + (recursive ? " (recursive)" : ""));
     }
 
-    /**
-     * Stop watching
-     */
     public void stop() {
         running = false;
         if (watchThread != null) {
@@ -80,9 +55,6 @@ public class FileWatcher {
         System.out.println("✓ Stopped watching: " + directoryPath);
     }
 
-    /**
-     * Initial directory scan
-     */
     private void scanDirectory() {
         File directory = directoryPath.toFile();
         if (!directory.exists() || !directory.isDirectory()) {
@@ -102,9 +74,6 @@ public class FileWatcher {
         }
     }
 
-    /**
-     * Scan directory recursively
-     */
     private void scanDirectoryRecursive(File directory, String relativePath) {
         File[] files = directory.listFiles();
         if (files == null) {
@@ -122,9 +91,6 @@ public class FileWatcher {
         }
     }
 
-    /**
-     * Watch loop - checks for file changes every 2 seconds
-     */
     private void watchLoop() {
         while (running) {
             try {
@@ -138,9 +104,6 @@ public class FileWatcher {
         }
     }
 
-    /**
-     * Check for file changes
-     */
     private void checkForChanges() {
         File directory = directoryPath.toFile();
         if (!directory.exists() || !directory.isDirectory()) {
@@ -191,9 +154,6 @@ public class FileWatcher {
         }
     }
 
-    /**
-     * Scan for changes recursively
-     */
     private void scanForChangesRecursive(File directory, String relativePath, Map<String, Long> currentFiles) {
         File[] files = directory.listFiles();
         if (files == null) {
@@ -211,9 +171,6 @@ public class FileWatcher {
         }
     }
 
-    /**
-     * Notify listener on JavaFX thread
-     */
     private void notifyChange(FileChangeEvent event) {
         Platform.runLater(() -> {
             try {
@@ -224,9 +181,6 @@ public class FileWatcher {
         });
     }
 
-    /**
-     * File change event
-     */
     public static class FileChangeEvent {
         private final File file;
         private final String relativePath;
@@ -255,9 +209,6 @@ public class FileWatcher {
         }
     }
 
-    /**
-     * File change type
-     */
     public enum FileChangeType {
         ADDED, MODIFIED, DELETED
     }

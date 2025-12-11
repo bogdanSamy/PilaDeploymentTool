@@ -8,9 +8,9 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.shape.SVGPath?>
 
-<AnchorPane prefHeight="584.0" prefWidth="972.0" stylesheets="@undecorated.css" xmlns="http://javafx.com/javafx/21.0.1" xmlns:fx="http://javafx.com/fxml/1">
+<AnchorPane prefHeight="584.0" prefWidth="972.0" stylesheets="@../css/undecorated.css" xmlns="http://javafx.com/javafx/21.0.1" xmlns:fx="http://javafx.com/fxml/1">
    <children>
-      <HBox alignment="TOP_RIGHT" prefHeight="30.0" prefWidth="200.0" styleClass="base" stylesheets="@undecorated.css" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
+      <HBox alignment="TOP_RIGHT" prefHeight="30.0" prefWidth="200.0" styleClass="base" stylesheets="@../css/undecorated.css" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
          <children>
             <HBox prefHeight="22.0" prefWidth="20000.0">
                <children>

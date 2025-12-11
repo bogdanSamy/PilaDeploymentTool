@@ -1,31 +1,10 @@
-/*
- * Copyright © 2024. XTREME SOFTWARE SOLUTIONS
- *
- * All rights reserved. Unauthorized use, reproduction, or distribution
- * of this software or any portion of it is strictly prohibited and may
- * result in severe civil and criminal penalties. This code is the sole
- * proprietary of XTREME SOFTWARE SOLUTIONS.
- *
- * Commercialization, redistribution, and use without explicit permission
- * from XTREME SOFTWARE SOLUTIONS, are expressly forbidden.
- */
-
 package com.autodeploy.config;
 
 import atlantafx.base.theme.*;
 import javafx.application.Application;
 
-/**
- * Utility class for managing application themes
- *
- * @author XDSSWAR
- * Created on 11/19/2025
- */
 public class ThemeManager {
 
-    /**
-     * Available theme options
-     */
     public enum Theme {
         PRIMER_LIGHT("Primer Light"),
         PRIMER_DARK("Primer Dark"),
@@ -55,21 +34,11 @@ public class ThemeManager {
         }
     }
 
-    /**
-     * Apply theme to application
-     *
-     * @param themeName The display name of the theme to apply
-     */
     public static void applyTheme(String themeName) {
         Theme theme = Theme.fromDisplayName(themeName);
         applyTheme(theme);
     }
 
-    /**
-     * Apply theme to application
-     *
-     * @param theme The theme to apply
-     */
     public static void applyTheme(Theme theme) {
         String stylesheet = switch (theme) {
             case PRIMER_LIGHT -> new PrimerLight().getUserAgentStylesheet();
@@ -84,20 +53,12 @@ public class ThemeManager {
         Application.setUserAgentStylesheet(stylesheet);
     }
 
-    /**
-     * Load and apply saved theme from configuration
-     */
     public static void loadSavedTheme() {
         ApplicationConfig config = ApplicationConfig.getInstance();
         String savedTheme = config.getTheme();
         applyTheme(savedTheme);
     }
 
-    /**
-     * Get all available theme names
-     *
-     * @return Array of theme display names
-     */
     public static String[] getAvailableThemes() {
         Theme[] themes = Theme.values();
         String[] themeNames = new String[themes.length];
