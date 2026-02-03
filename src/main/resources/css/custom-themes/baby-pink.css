@@ -1,0 +1,61 @@
+/*
+ * Baby Pink Theme - Custom Override for AtlantaFX
+ * Suprascrie variabilele globale definite în tema de bază (Primer Light).
+ */
+
+.root {
+    /* =================================================================================
+       1. CULORI PRINCIPALE (BASE & BRAND)
+       ================================================================================= */
+
+    /* Fundalul principal al aplicației (ferestre, panouri principale) */
+    -color-bg-default: #F4C2C2;
+
+    /* Culoarea de accent principală (butoane active, checkbox-uri, focus states) */
+    -color-accent-emphasis: #CD5E77;
+
+    /* Culoarea textului sau iconițelor afișate PE elementele de accent */
+    -color-accent-fg: #D98296;
+
+
+    /* =================================================================================
+       2. SUPRAFEȚE SECUNDARE ȘI INPUT-URI
+       ================================================================================= */
+
+    /* Fundal pentru zone secundare (header, sidebar, cards, containere) - oferă contrast */
+    -color-bg-subtle: #E8B4B4;
+
+    /* Fundal pentru câmpurile de input (TextField, TextArea) și elemente "adâncite" */
+    -color-bg-inset: #E3A5B4;
+
+
+    /* =================================================================================
+       3. INTERACȚIUNE, HOVER ȘI SELECȚIE
+       ================================================================================= */
+
+    /* Fundal la hover pentru elemente interactive neutre (rânduri în tabele, liste, butoane simple) */
+    -color-neutral-subtle: rgba(205, 94, 119, 0.15);
+
+    /* Culoarea bordurii la hover pentru elementele interactive */
+    -color-neutral-muted: rgba(205, 94, 119, 0.4);
+
+    /* Fundalul elementelor SELECTATE (în TableView, ListView, TreeView) */
+    -color-accent-subtle: rgba(205, 94, 119, 0.25);
+
+    /* Inelul de focus vizibil la navigarea prin tastatură (Tab) */
+    -color-focused: rgba(205, 94, 119, 0.5);
+
+
+    /* =================================================================================
+       4. TIPOGRAFIE ȘI DELIMITĂRI (BORDERS)
+       ================================================================================= */
+
+    /* Culoarea implicită a bordurilor pentru panouri și controale */
+    -color-border-default: #D8A0A0;
+
+    /* Culoarea principală a textului (titluri, labels, conținut principal) */
+    -color-fg-default: #4A2C32;
+
+    /* Culoarea secundară a textului (subtitluri, descrieri, placeholder text) */
+    -color-fg-muted: #7A5C62;
+}
