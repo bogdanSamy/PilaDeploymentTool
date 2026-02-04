@@ -5,5 +5,19 @@
   "localJspPath" : "C:\\eclipse\\workspace2\\Trunk_CaeEsercente\\web_app_Intranet\\SM",
   "remoteJarPath" : "/nodel/testUpload",
   "remoteJspPath" : "/nodel/testUpload",
-  "buildFilePath" : "C:\\eclipse\\workspace2\\Trunk_CaeEsercente\\build_ejb3+2.xml"
+  "buildFilePath" : "C:\\eclipse\\workspace2\\Trunk_CaeEsercente\\build_ejb3+2.xml",
+  "antTarget" : "All",
+  "antCommand" : "ant -f \"C:\\eclipse\\workspace2\\Trunk_CaeEsercente\\build_ejb3+2.xml\" All",
+  "antLibraries" : [ ]
+}, {
+  "id" : "68a5af6a-27bf-4e42-b796-2cda6bc75a11",
+  "name" : "CaeGestioneEsercente",
+  "localJarPath" : "C:\\eclipse\\workspace2\\Trunk_CaeGestioneEsercente\\dist",
+  "localJspPath" : "C:\\eclipse\\workspace2\\Trunk_CaeGestioneEsercente\\caegestioneesercente-web-intranet\\src\\main\\webapp\\H2O",
+  "remoteJarPath" : "/nodel/testUpload",
+  "remoteJspPath" : "/nodel/testUpload",
+  "buildFilePath" : "C:\\eclipse\\workspace2\\Trunk_CaeGestioneEsercente\\build.xml",
+  "antTarget" : "make-jars",
+  "antCommand" : "ant -lib \"C:\\weblogic4\\wls12\\oracle_common\\modules\\javax.persistence_2.1.0.0_1-0-2.jar\" -lib \"C:\\LaPilaSiLaCiocan-Portable\\app\\LaPilaSiLaCiocan-1.0-SNAPSHOT-uber.jar\" -f \"C:\\eclipse\\workspace2\\Trunk_CaeGestioneEsercente\\build.xml\" make-jars",
+  "antLibraries" : [ ]
 } ]

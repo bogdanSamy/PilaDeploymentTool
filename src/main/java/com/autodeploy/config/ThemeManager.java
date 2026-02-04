@@ -13,8 +13,6 @@ public class ThemeManager {
         PRIMER_DARK("Primer Dark"),
         NORD_LIGHT("Nord Light"),
         NORD_DARK("Nord Dark"),
-        CUPERTINO_LIGHT("Cupertino Light"),
-        CUPERTINO_DARK("Cupertino Dark"),
         DRACULA("Dracula"),
         BABY_PINK("Baby Pink");
 
@@ -70,8 +68,6 @@ public class ThemeManager {
                 case PRIMER_DARK -> new PrimerDark().getUserAgentStylesheet();
                 case NORD_LIGHT -> new NordLight().getUserAgentStylesheet();
                 case NORD_DARK -> new NordDark().getUserAgentStylesheet();
-                case CUPERTINO_LIGHT -> new CupertinoLight().getUserAgentStylesheet();
-                case CUPERTINO_DARK -> new CupertinoDark().getUserAgentStylesheet();
                 case DRACULA -> new Dracula().getUserAgentStylesheet();
                 default -> new PrimerLight().getUserAgentStylesheet();
             };

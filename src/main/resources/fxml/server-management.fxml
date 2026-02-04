@@ -128,7 +128,7 @@
                                             <Label styleClass="required-indicator" text="*" />
                                         </HBox>
                                         <TextField fx:id="restartScriptField"
-                                                   text="/opt/scripts/restart_manager.sh"
+                                                   text="/nodel/RestartManager/restart_manager.sh"
                                                    promptText="Path to restart_manager.sh on server"
                                                    styleClass="field-input" />
                                     </children>

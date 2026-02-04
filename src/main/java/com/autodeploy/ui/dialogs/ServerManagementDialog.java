@@ -134,7 +134,7 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         passwordField.setText(server.getPassword() != null ? server.getPassword() : "");
         restartScriptField.setText(server.getRestartManagerScript() != null
                 ? server.getRestartManagerScript()
-                : "/opt/scripts/restart_manager.sh");
+                : "/nodel/RestartManager/restart_manager.sh");
     }
 
     private void clearFields() {
@@ -143,7 +143,7 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
         portField.setText("22");
         usernameField.setText("dev");
         passwordField.setText("dev");
-        restartScriptField.setText("/opt/scripts/restart_manager.sh");
+        restartScriptField.setText("/nodel/RestartManager/restart_manager.sh");
         serversTable.getSelectionModel().clearSelection();
         selectedServer = null;
     }
