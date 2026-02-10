@@ -1,8 +1,8 @@
 package com.autodeploy.ui.dialogs;
 
-import com.autodeploy.assets.Assets;
-import com.autodeploy.config.ServerManager;
-import com.autodeploy.model.Server;
+import com.autodeploy.core.assets.Assets;
+import com.autodeploy.domain.manager.ServerManager;
+import com.autodeploy.domain.model.Server;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;

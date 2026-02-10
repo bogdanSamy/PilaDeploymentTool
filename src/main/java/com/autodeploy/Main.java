@@ -1,8 +1,7 @@
 package com.autodeploy;
 
-import atlantafx.base.theme.*;
-import com.autodeploy.config.ThemeManager;
-import com.autodeploy.ui.SelectionWindow;
+import com.autodeploy.core.config.ThemeManager;
+import com.autodeploy.ui.window.SelectionWindow;
 import javafx.application.Application;
 import javafx.stage.Stage;
 import java.io.IOException;

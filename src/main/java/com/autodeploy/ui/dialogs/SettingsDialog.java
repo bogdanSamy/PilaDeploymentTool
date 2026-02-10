@@ -1,8 +1,8 @@
 package com.autodeploy.ui.dialogs;
 
-import com.autodeploy.assets.Assets;
-import com.autodeploy.config.ApplicationConfig;
-import com.autodeploy.config.ThemeManager;
+import com.autodeploy.core.assets.Assets;
+import com.autodeploy.core.config.ApplicationConfig;
+import com.autodeploy.core.config.ThemeManager;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Parent;

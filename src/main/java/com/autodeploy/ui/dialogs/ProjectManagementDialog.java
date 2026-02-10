@@ -1,10 +1,10 @@
 package com.autodeploy.ui.dialogs;
 
-import com.autodeploy.assets.Assets;
-import com.autodeploy.config.ProjectManager;
-import com.autodeploy.model.Project;
-import com.autodeploy.helper.AntFileParser;
-import com.autodeploy.services.BuildService;
+import com.autodeploy.core.assets.Assets;
+import com.autodeploy.domain.manager.ProjectManager;
+import com.autodeploy.domain.model.Project;
+import com.autodeploy.service.utility.AntFileParser;
+import com.autodeploy.service.deploy.BuildService;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
 import javafx.collections.FXCollections;
