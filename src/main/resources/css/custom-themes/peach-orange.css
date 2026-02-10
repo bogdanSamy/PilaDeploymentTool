@@ -1,0 +1,71 @@
+/*
+ * Sunset Orange Theme - Custom Override for AtlantaFX
+ * Suprascrie variabilele globale definite în tema de bază (Primer Light).
+ * Tonuri calde de portocaliu, roz și mov inspirate din apus.
+ */
+
+.root {
+    /* =================================================================================
+       1. CULORI PRINCIPALE (BASE & BRAND)
+       ================================================================================= */
+
+    /* Fundalul principal al aplicației (ferestre, panouri principale) */
+    /* Portocaliu deschis, cald, ca cerul la apus */
+    -color-bg-default: #FFE4D6;
+
+    /* Culoarea de accent principală (butoane active, checkbox-uri, focus states) */
+    /* Portocaliu intens, vibrant ca soarele */
+    -color-accent-emphasis: #E85D04;
+
+    /* Culoarea textului sau iconițelor afișate PE elementele de accent */
+    /* Portocaliu-roz pentru armonie */
+    -color-accent-fg: #F48C56;
+
+
+    /* =================================================================================
+       2. SUPRAFEȚE SECUNDARE ȘI INPUT-URI
+       ================================================================================= */
+
+    /* Fundal pentru zone secundare (header, sidebar, cards, containere) - oferă contrast */
+    /* Roz-piersică, ca norii la apus */
+    -color-bg-subtle: #FFDAC1;
+
+    /* Fundal pentru câmpurile de input (TextField, TextArea) și elemente "adâncite" */
+    /* Roz-lavandă deschis, tranziție spre mov */
+    -color-bg-inset: #F5CFC6;
+
+
+    /* =================================================================================
+       3. INTERACȚIUNE, HOVER ȘI SELECȚIE
+       ================================================================================= */
+
+    /* Fundal la hover pentru elemente interactive neutre (rânduri în tabele, liste, butoane simple) */
+    -color-neutral-subtle: rgba(232, 93, 4, 0.12);
+
+    /* Culoarea bordurii la hover pentru elementele interactive */
+    -color-neutral-muted: rgba(232, 93, 4, 0.35);
+
+    /* Fundalul elementelor SELECTATE (în TableView, ListView, TreeView) */
+    /* Nuanță mov-roz pentru selecție, aduce contrast plăcut */
+    -color-accent-subtle: rgba(199, 105, 138, 0.25);
+
+    /* Inelul de focus vizibil la navigarea prin tastatură (Tab) */
+    -color-focused: rgba(232, 93, 4, 0.5);
+
+
+    /* =================================================================================
+       4. TIPOGRAFIE ȘI DELIMITĂRI (BORDERS)
+       ================================================================================= */
+
+    /* Culoarea implicită a bordurilor pentru panouri și controale */
+    /* Roz-mov, ca cerul după apus */
+    -color-border-default: #D4A5A5;
+
+    /* Culoarea principală a textului (titluri, labels, conținut principal) */
+    /* Mov închis, profund, pentru lizibilitate excelentă */
+    -color-fg-default: #4A2040;
+
+    /* Culoarea secundară a textului (subtitluri, descrieri, placeholder text) */
+    /* Mov-roz mediu pentru ierarhie vizuală */
+    -color-fg-muted: #8B5A6B;
+}

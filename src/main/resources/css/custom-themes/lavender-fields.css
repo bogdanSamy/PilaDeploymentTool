@@ -1,0 +1,71 @@
+/*
+ * Lavender Fields Theme (Medium Vibrant) - Custom Override for AtlantaFX
+ * Suprascrie variabilele globale definite în tema de bază (Primer Light).
+ * Tonuri medii de mov vibrant - ca lavanda în plină înflorire.
+ */
+
+.root {
+    /* =================================================================================
+       1. CULORI PRINCIPALE (BASE & BRAND)
+       ================================================================================= */
+
+    /* Fundalul principal al aplicației (ferestre, panouri principale) */
+    /* Lavandă medie, ca petalele mature */
+    -color-bg-default: #D8CCE8;
+
+    /* Culoarea de accent principală (butoane active, checkbox-uri, focus states) */
+    /* Mov intens și vibrant, ca lavanda în soare */
+    -color-accent-emphasis: #7B2D8E;
+
+    /* Culoarea textului sau iconițelor afișate PE elementele de accent */
+    /* Mov-magenta vibrant */
+    -color-accent-fg: #9C27B0;
+
+
+    /* =================================================================================
+       2. SUPRAFEȚE SECUNDARE ȘI INPUT-URI
+       ================================================================================= */
+
+    /* Fundal pentru zone secundare (header, sidebar, cards, containere) - oferă contrast */
+    /* Lavandă-violet medie */
+    -color-bg-subtle: #C9B8DE;
+
+    /* Fundal pentru câmpurile de input (TextField, TextArea) și elemente "adâncite" */
+    /* Mov-gri mai intens */
+    -color-bg-inset: #BBA8D4;
+
+
+    /* =================================================================================
+       3. INTERACȚIUNE, HOVER ȘI SELECȚIE
+       ================================================================================= */
+
+    /* Fundal la hover pentru elemente interactive neutre (rânduri în tabele, liste, butoane simple) */
+    -color-neutral-subtle: rgba(123, 45, 142, 0.15);
+
+    /* Culoarea bordurii la hover pentru elementele interactive */
+    -color-neutral-muted: rgba(123, 45, 142, 0.42);
+
+    /* Fundalul elementelor SELECTATE (în TableView, ListView, TreeView) */
+    /* Mov vibrant pentru selecție vizibilă */
+    -color-accent-subtle: rgba(123, 45, 142, 0.25);
+
+    /* Inelul de focus vizibil la navigarea prin tastatură (Tab) */
+    -color-focused: rgba(156, 39, 176, 0.55);
+
+
+    /* =================================================================================
+       4. TIPOGRAFIE ȘI DELIMITĂRI (BORDERS)
+       ================================================================================= */
+
+    /* Culoarea implicită a bordurilor pentru panouri și controale */
+    /* Mov-gri mai închis și definit */
+    -color-border-default: #9A82B5;
+
+    /* Culoarea principală a textului (titluri, labels, conținut principal) */
+    /* Mov închis intens pentru contrast puternic */
+    -color-fg-default: #2E1A47;
+
+    /* Culoarea secundară a textului (subtitluri, descrieri, placeholder text) */
+    /* Mov-violet pentru ierarhie vizuală */
+    -color-fg-muted: #5C3D7A;
+}

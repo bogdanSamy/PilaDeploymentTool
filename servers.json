@@ -13,7 +13,7 @@
   "port" : 22,
   "username" : "dev",
   "password" : "dev",
-  "restartManagerScript" : "/nodel/testeUpload/restart_manager.sh"
+  "restartManagerScript" : "/nodel/RestartManager/restart_manager.sh"
 }, {
   "id" : "46191319-7356-44ae-bd85-687b569a8cb4",
   "name" : "61",

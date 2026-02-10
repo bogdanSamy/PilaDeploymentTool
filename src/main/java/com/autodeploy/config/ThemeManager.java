@@ -1,12 +1,55 @@
 package com.autodeploy.config;
+
 import atlantafx.base.theme.*;
 import javafx.application.Application;
+
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
+import java.util.Map;
+import java.util.Optional;
+import java.util.function.Supplier;
 
 public class ThemeManager {
+
+    // =================================================================================
+    // CONFIGURAȚIE - Adaugă temele noi DOAR aici!
+    // =================================================================================
+
+    /**
+     * Mapare teme custom -> căi CSS.
+     * Pentru o temă nouă, adaugă o intrare aici și în enum.
+     */
+    private static final Map<Theme, String> CUSTOM_THEME_PATHS = Map.of(
+            Theme.BABY_PINK, "/css/custom-themes/baby-pink.css",
+            Theme.FOREST_GREEN, "/css/custom-themes/forest-green.css",
+            Theme.AUTUMN_FOREST, "/css/custom-themes/autumn-forest.css",
+            Theme.PEACH_ORANGE, "/css/custom-themes/peach-orange.css",
+            Theme.OCEAN_BLUE, "/css/custom-themes/ocean-blue.css",
+            Theme.LAVENDER_FIELDS, "/css/custom-themes/lavender-fields.css",
+            Theme.CHRISTMAS, "/css/custom-themes/christmas.css"
+    );
+
+    /**
+     * Mapare teme AtlantaFX standard -> supplier-i pentru instanțe.
+     */
+    private static final Map<Theme, Supplier<atlantafx.base.theme.Theme>> ATLANTAFX_THEMES = Map.of(
+            Theme.PRIMER_LIGHT, PrimerLight::new,
+            Theme.PRIMER_DARK, PrimerDark::new,
+            Theme.NORD_LIGHT, NordLight::new,
+            Theme.NORD_DARK, NordDark::new,
+            Theme.DRACULA, Dracula::new
+    );
+
+    /**
+     * Tema de bază pentru override-urile custom.
+     */
+    private static final Supplier<atlantafx.base.theme.Theme> BASE_THEME = PrimerLight::new;
+
+    // =================================================================================
+    // ENUM THEME
+    // =================================================================================
 
     public enum Theme {
         PRIMER_LIGHT("Primer Light"),
@@ -14,7 +57,13 @@ public class ThemeManager {
         NORD_LIGHT("Nord Light"),
         NORD_DARK("Nord Dark"),
         DRACULA("Dracula"),
-        BABY_PINK("Baby Pink");
+        BABY_PINK("Baby Pink"),
+        FOREST_GREEN("Forest Green"),
+        AUTUMN_FOREST("Autumn Forest"),
+        PEACH_ORANGE("Peach Orange"),
+        OCEAN_BLUE("Ocean Blue"),
+        LAVENDER_FIELDS("Lavender Fields"),
+        CHRISTMAS("Christmas");
 
         private final String displayName;
 
@@ -32,47 +81,64 @@ public class ThemeManager {
                     return theme;
                 }
             }
-            return PRIMER_LIGHT; // default
+            return PRIMER_LIGHT;
         }
     }
 
+    // =================================================================================
+    // METODE PUBLICE
+    // =================================================================================
+
     public static void applyTheme(String themeName) {
-        Theme theme = Theme.fromDisplayName(themeName);
-        applyTheme(theme);
+        applyTheme(Theme.fromDisplayName(themeName));
     }
 
     public static void applyTheme(Theme theme) {
-        if (theme == Theme.BABY_PINK) {
-            // Logica specială pentru tema Custom
-            // 1. Luăm URL-ul temei de bază (folosim Primer Light ca fundație)
-            String baseThemeUrl = new PrimerLight().getUserAgentStylesheet();
+        String stylesheet = CUSTOM_THEME_PATHS.containsKey(theme)
+                ? buildCustomStylesheet(theme)
+                : getAtlantaFXStylesheet(theme);
 
-            // 2. Citim conținutul CSS-ului nostru local (override-urile)
-            String customCssContent = loadResourceContent("/css/custom-themes/baby-pink.css");
+        Application.setUserAgentStylesheet(stylesheet);
+    }
 
-            // 3. Creăm un CSS virtual care le combină
-            // Folosim @import url("...") pentru a încărca tema AtlantaFX corect
-            String virtualCss = "@import url(\"" + baseThemeUrl + "\");\n" + customCssContent;
+    public static void loadSavedTheme() {
+        ApplicationConfig config = ApplicationConfig.getInstance();
+        applyTheme(config.getTheme());
+    }
 
-            // 4. Convertim în Data URI (base64) pentru ca JavaFX să îl accepte ca "fișier"
-            String dataUri = "data:text/css;base64," +
-                    Base64.getEncoder().encodeToString(virtualCss.getBytes(StandardCharsets.UTF_8));
-
-            // 5. Aplicăm GLOBAL
-            Application.setUserAgentStylesheet(dataUri);
-
-        } else {
-            // Logica standard pentru temele AtlantaFX
-            String stylesheet = switch (theme) {
-                case PRIMER_LIGHT -> new PrimerLight().getUserAgentStylesheet();
-                case PRIMER_DARK -> new PrimerDark().getUserAgentStylesheet();
-                case NORD_LIGHT -> new NordLight().getUserAgentStylesheet();
-                case NORD_DARK -> new NordDark().getUserAgentStylesheet();
-                case DRACULA -> new Dracula().getUserAgentStylesheet();
-                default -> new PrimerLight().getUserAgentStylesheet();
-            };
-            Application.setUserAgentStylesheet(stylesheet);
+    public static String[] getAvailableThemes() {
+        Theme[] themes = Theme.values();
+        String[] themeNames = new String[themes.length];
+        for (int i = 0; i < themes.length; i++) {
+            themeNames[i] = themes[i].getDisplayName();
         }
+        return themeNames;
+    }
+
+    // =================================================================================
+    // METODE PRIVATE HELPER
+    // =================================================================================
+
+    /**
+     * Construiește stylesheet-ul pentru o temă custom (base + override).
+     */
+    private static String buildCustomStylesheet(Theme theme) {
+        String baseThemeUrl = BASE_THEME.get().getUserAgentStylesheet();
+        String customCssContent = loadResourceContent(CUSTOM_THEME_PATHS.get(theme));
+
+        String combinedCss = "@import url(\"" + baseThemeUrl + "\");\n" + customCssContent;
+
+        return "data:text/css;base64," +
+                Base64.getEncoder().encodeToString(combinedCss.getBytes(StandardCharsets.UTF_8));
+    }
+
+    /**
+     * Obține stylesheet-ul pentru o temă AtlantaFX standard.
+     */
+    private static String getAtlantaFXStylesheet(Theme theme) {
+        return Optional.ofNullable(ATLANTAFX_THEMES.get(theme))
+                .map(supplier -> supplier.get().getUserAgentStylesheet())
+                .orElseGet(() -> BASE_THEME.get().getUserAgentStylesheet());
     }
 
     private static String loadResourceContent(String path) {
@@ -86,20 +152,5 @@ public class ThemeManager {
             e.printStackTrace();
             return "";
         }
-    }
-
-    public static void loadSavedTheme() {
-        ApplicationConfig config = ApplicationConfig.getInstance();
-        String savedTheme = config.getTheme();
-        applyTheme(savedTheme);
-    }
-
-    public static String[] getAvailableThemes() {
-        Theme[] themes = Theme.values();
-        String[] themeNames = new String[themes.length];
-        for (int i = 0; i < themes.length; i++) {
-            themeNames[i] = themes[i].getDisplayName();
-        }
-        return themeNames;
     }
 }

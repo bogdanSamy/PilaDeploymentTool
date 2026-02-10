@@ -1,0 +1,71 @@
+/*
+ * Ocean Blue Theme (Dark) - Custom Override for AtlantaFX
+ * Suprascrie variabilele globale definite în tema de bază (Primer Light).
+ * Tonuri de albastru marin ÎNCHIS cu accente turcoaz inspirate din adâncurile oceanului.
+ */
+
+.root {
+    /* =================================================================================
+       1. CULORI PRINCIPALE (BASE & BRAND)
+       ================================================================================= */
+
+    /* Fundalul principal al aplicației (ferestre, panouri principale) */
+    /* Albastru marin închis, ca oceanul la apus */
+    -color-bg-default: #0A1929;
+
+    /* Culoarea de accent principală (butoane active, checkbox-uri, focus states) */
+    /* Turcoaz intens, ca bioluminescența din adâncuri */
+    -color-accent-emphasis: #0E7490;
+
+    /* Culoarea textului sau iconițelor afișate PE elementele de accent */
+    /* Turcoaz luminos pentru contrast pe fundal închis */
+    -color-accent-fg: #22D3EE;
+
+
+    /* =================================================================================
+       2. SUPRAFEȚE SECUNDARE ȘI INPUT-URI
+       ================================================================================= */
+
+    /* Fundal pentru zone secundare (header, sidebar, cards, containere) - oferă contrast */
+    /* Albastru-marin mediu, ca apa la 50m adâncime */
+    -color-bg-subtle: #0F2942;
+
+    /* Fundal pentru câmpurile de input (TextField, TextArea) și elemente "adâncite" */
+    /* Albastru închis, ca fundul oceanului */
+    -color-bg-inset: #071318;
+
+
+    /* =================================================================================
+       3. INTERACȚIUNE, HOVER ȘI SELECȚIE
+       ================================================================================= */
+
+    /* Fundal la hover pentru elemente interactive neutre (rânduri în tabele, liste, butoane simple) */
+    -color-neutral-subtle: rgba(14, 116, 144, 0.18);
+
+    /* Culoarea bordurii la hover pentru elementele interactive */
+    -color-neutral-muted: rgba(14, 116, 144, 0.45);
+
+    /* Fundalul elementelor SELECTATE (în TableView, ListView, TreeView) */
+    /* Turcoaz transparent pentru selecție vizibilă pe fundal închis */
+    -color-accent-subtle: rgba(14, 116, 144, 0.30);
+
+    /* Inelul de focus vizibil la navigarea prin tastatură (Tab) */
+    -color-focused: rgba(34, 211, 238, 0.5);
+
+
+    /* =================================================================================
+       4. TIPOGRAFIE ȘI DELIMITĂRI (BORDERS)
+       ================================================================================= */
+
+    /* Culoarea implicită a bordurilor pentru panouri și controale */
+    /* Albastru-cenușiu, ca reflexia lunii pe valuri */
+    -color-border-default: #1E4976;
+
+    /* Culoarea principală a textului (titluri, labels, conținut principal) */
+    /* Albastru-alb deschis, pentru lizibilitate maximă */
+    -color-fg-default: #E0F2FE;
+
+    /* Culoarea secundară a textului (subtitluri, descrieri, placeholder text) */
+    /* Albastru-gri deschis pentru ierarhie vizuală */
+    -color-fg-muted: #7DD3FC;
+}

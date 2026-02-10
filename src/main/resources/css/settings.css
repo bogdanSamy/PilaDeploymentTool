@@ -105,7 +105,6 @@
     -fx-font-size: 38px;
     -fx-font-weight: bold;
     -fx-padding: 0 0 0px 0;
-    -fx-effect: dropshadow(gaussian, -color-shadow-default, 10, 0, 0, 2);
 }
 
 /* Responsive title for small screens */

@@ -1,0 +1,47 @@
+/*
+ * Cyberpunk Theme (Soft) - Custom Override for AtlantaFX
+ * Suprascrie variabilele globale definite în tema de bază (Primer Dark).
+ * Tonuri neon atenuate pe fundal închis - ușor pentru ochi.
+ */
+
+.root {
+    /* =================================================================================
+       1. CULORI PRINCIPALE (BASE & BRAND)
+       ================================================================================= */
+
+    /* Fundalul principal al aplicației (ferestre, panouri principale) */
+    -color-bg-default: #1E1E2E;
+
+    /* Culoarea de accent principală (butoane active, checkbox-uri, focus states) */
+    -color-accent-emphasis: #C678DD;
+
+    /* Culoarea textului sau iconițelor afișate PE elementele de accent */
+    -color-accent-fg: #56B6C2;
+
+
+    /* =================================================================================
+       2. SUPRAFEȚE SECUNDARE ȘI INPUT-URI
+       ================================================================================= */
+
+    -color-bg-subtle: #282A3A;
+    -color-bg-inset: #252636;
+
+
+    /* =================================================================================
+       3. INTERACȚIUNE, HOVER ȘI SELECȚIE
+       ================================================================================= */
+
+    -color-neutral-subtle: rgba(198, 120, 221, 0.10);
+    -color-neutral-muted: rgba(198, 120, 221, 0.35);
+    -color-accent-subtle: rgba(86, 182, 194, 0.15);
+    -color-focused: rgba(198, 120, 221, 0.50);
+
+
+    /* =================================================================================
+       4. TIPOGRAFIE ȘI DELIMITĂRI (BORDERS)
+       ================================================================================= */
+
+    -color-border-default: #454767;
+    -color-fg-default: #D4D4E4;
+    -color-fg-muted: #9090A8;
+}

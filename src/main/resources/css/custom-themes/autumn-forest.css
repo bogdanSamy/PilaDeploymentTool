@@ -1,0 +1,71 @@
+/*
+ * Autumn Forest Theme (Balanced) - Custom Override for AtlantaFX
+ * Suprascrie variabilele globale definite în tema de bază (Primer Dark).
+ * Tonuri medii de maro și portocaliu inspirate din pădurea de toamnă la amurg.
+ */
+
+.root {
+    /* =================================================================================
+       1. CULORI PRINCIPALE (BASE & BRAND)
+       ================================================================================= */
+
+    /* Fundalul principal al aplicației (ferestre, panouri principale) */
+    /* Maro mediu, ca trunchiul de copac */
+    -color-bg-default: #3D2E24;
+
+    /* Culoarea de accent principală (butoane active, checkbox-uri, focus states) */
+    /* Portocaliu ruginiu, ca frunzele de stejar */
+    -color-accent-emphasis: #D4793C;
+
+    /* Culoarea textului sau iconițelor afișate PE elementele de accent */
+    /* Portocaliu auriu pentru armonie */
+    -color-accent-fg: #E8A860;
+
+
+    /* =================================================================================
+       2. SUPRAFEȚE SECUNDARE ȘI INPUT-URI
+       ================================================================================= */
+
+    /* Fundal pentru zone secundare (header, sidebar, cards, containere) - oferă contrast */
+    /* Maro-roșcat, ca frunzele căzute */
+    -color-bg-subtle: #4A3830;
+
+    /* Fundal pentru câmpurile de input (TextField, TextArea) și elemente "adâncite" */
+    /* Maro cald, ușor mai închis */
+    -color-bg-inset: #352720;
+
+
+    /* =================================================================================
+       3. INTERACȚIUNE, HOVER ȘI SELECȚIE
+       ================================================================================= */
+
+    /* Fundal la hover pentru elemente interactive neutre (rânduri în tabele, liste, butoane simple) */
+    -color-neutral-subtle: rgba(212, 121, 60, 0.14);
+
+    /* Culoarea bordurii la hover pentru elementele interactive */
+    -color-neutral-muted: rgba(212, 121, 60, 0.40);
+
+    /* Fundalul elementelor SELECTATE (în TableView, ListView, TreeView) */
+    /* Portocaliu cald semi-transparent */
+    -color-accent-subtle: rgba(212, 121, 60, 0.22);
+
+    /* Inelul de focus vizibil la navigarea prin tastatură (Tab) */
+    -color-focused: rgba(212, 121, 60, 0.55);
+
+
+    /* =================================================================================
+       4. TIPOGRAFIE ȘI DELIMITĂRI (BORDERS)
+       ================================================================================= */
+
+    /* Culoarea implicită a bordurilor pentru panouri și controale */
+    /* Maro mediu-deschis, ca crenguțele */
+    -color-border-default: #6B5545;
+
+    /* Culoarea principală a textului (titluri, labels, conținut principal) */
+    /* Bej crem, cald și ușor de citit */
+    -color-fg-default: #F0E4D8;
+
+    /* Culoarea secundară a textului (subtitluri, descrieri, placeholder text) */
+    /* Bej-maro pentru ierarhie vizuală */
+    -color-fg-muted: #B8A090;
+}
