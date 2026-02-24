@@ -5,20 +5,19 @@ import com.autodeploy.core.config.ApplicationConfig;
 import com.autodeploy.domain.model.Project;
 import com.autodeploy.domain.model.Server;
 import com.autodeploy.infrastructure.connection.ConnectionManager;
+import com.autodeploy.notification.NotificationController;
 import com.autodeploy.service.deploy.BuildService;
 import com.autodeploy.service.deploy.FileUploadService;
 import com.autodeploy.service.restart.RestartService;
 import com.autodeploy.service.scanner.FileScannerService;
 import com.autodeploy.service.utility.BrowserService;
+import com.autodeploy.service.utility.FileOpener;
 import com.autodeploy.service.utility.LogDownloadService;
-import com.autodeploy.ui.dialogs.CustomAlert;
-import com.autodeploy.notification.NotificationController;
+import com.autodeploy.ui.dialog.CustomAlert;
 import com.autodeploy.ui.overlay.UIOverlayManager;
+import com.autodeploy.ui.window.component.*;
 import io.github.palexdev.materialfx.controls.MFXButton;
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Platform;
-import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
 import javafx.fxml.Initializable;
 import javafx.scene.Parent;
@@ -29,63 +28,86 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.shape.SVGPath;
-import javafx.util.Duration;
 import xss.it.nfx.NfxStage;
-import xss.it.nfx.WindowState;
 
+import java.io.File;
 import java.io.IOException;
 import java.net.URL;
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Objects;
 import java.util.ResourceBundle;
 import java.util.logging.Logger;
 
-import static com.autodeploy.core.constants.DeploymentConstants.*;
+import static com.autodeploy.core.constants.Constants.*;
 
+/**
+ * Fereastra principală de deployment — orchestrează toate componentele aplicației.
+ * <p>
+ * Lifecycle-ul inițializării are 3 faze (ordine importantă):
+ * <ol>
+ *   <li><b>Constructor</b> → {@link #initializeWindow()} — creează scena, rootPane,
+ *       contentPane, overlayManager</li>
+ *   <li><b>{@link .initialize}</b> (apelat de FXMLLoader) — creează componentele UI
+ *       care NU depind de overlay/conexiune: logPanel, titleBar, fileScanner, butoane</li>
+ *   <li><b>{@link #lateInit}</b> (apelat la finalul initializeWindow) — creează
+ *       componentele care DEPIND de overlayManager: connectionHandler, uploadHandler,
+ *       restartHandler, și inițiază conexiunea</li>
+ * </ol>
+ * <p>
+ * Separarea în 3 faze e necesară deoarece:
+ * <ul>
+ *   <li>overlayManager necesită rootPane (creat în constructor, DUPĂ FXML load)</li>
+ *   <li>connectionHandler/uploadHandler necesită overlayManager</li>
+ *   <li>{@code initialize()} e apelat de FXMLLoader ÎNAINTE ca constructorul să termine</li>
+ * </ul>
+ * <p>
+ * Componentele complexe sunt delegate (vezi {@code ui/window/component/}):
+ * <ul>
+ *   <li>{@link ConnectionHandler} — ciclul de viață al conexiunii + overlay-uri</li>
+ *   <li>{@link UploadHandler} — validare + upload JAR/JSP</li>
+ *   <li>{@link RestartHandler} — buton restart + timer</li>
+ *   <li>{@link LogPanelManager} — log panel + detecție erori conexiune</li>
+ *   <li>{@link DeploymentActionBar} — enable/disable butoane centralizat</li>
+ *   <li>{@link FileListPanel} — liste de fișiere cu checkbox-uri (×2: JAR + JSP)</li>
+ * </ul>
+ */
 public class DeploymentWindow extends NfxStage implements Initializable {
 
     private static final Logger LOGGER = Logger.getLogger(DeploymentWindow.class.getName());
-    private static final DateTimeFormatter TIME_FORMATTER = DateTimeFormatter.ofPattern("HH:mm:ss");
 
-    // UI Controls
     @FXML private Button closeBtn, maxBtn, minBtn, toggleLogBtn;
     @FXML private SVGPath maxShape;
     @FXML private ImageView iconView;
     @FXML private Label title, projectNameLabel, serverNameLabel, jarCountLabel, jspCountLabel;
-    @FXML private MFXButton changeBtn, restartServerBtn, downloadLogsBtn, buildProjectBtn, openBrowserBtn, uploadJarsBtn, uploadJspsBtn, uploadAllBtn;
+    @FXML private MFXButton changeBtn, restartServerBtn, downloadLogsBtn, buildProjectBtn;
+    @FXML private MFXButton openBrowserBtn, uploadJarsBtn, uploadJspsBtn, uploadAllBtn;
     @FXML private TitledPane jarSection, jspSection;
     @FXML private VBox jarListContainer, jspListContainer, logSection;
     @FXML private TextField jspSearchField;
     @FXML private TextArea logArea;
-
-    // Core Data
-    private final Project project;
-    private final Server server;
-
-    // UI State
-    private SelectionWindow selectionWindow;
     private StackPane rootPane;
     private VBox contentPane;
-    private UIOverlayManager overlayManager;
-    private boolean logVisible = false;
-    private boolean isConnecting = false;
 
-    // Services
-    private ConnectionManager connectionManager;
+    private final Project project;
+    private final Server server;
+    private SelectionWindow selectionWindow;
+
+    // --- Componente delegate ---
+
+    private TitleBarManager titleBarManager;
+    private LogPanelManager logPanel;
+    private DeploymentActionBar actionBar;
+    private ConnectionHandler connectionHandler;
+    private UploadHandler uploadHandler;
+    private RestartHandler restartHandler;
+    private UIOverlayManager overlayManager;
+
+    // --- Servicii (folosite direct, fără wrapper component) ---
     private FileScannerService fileScannerService;
-    private FileUploadService fileUploadService;
+    private FileListPanel jarPanel;
+    private FileListPanel jspPanel;
     private BuildService buildService;
     private LogDownloadService logDownloadService;
-    private RestartService restartService;
     private BrowserService browserService;
-
-    // Timers
-    private Timeline restartTimerTimeline;
-
-    // =================================================================================================================
-    // INITIALIZATION & SETUP
-    // =================================================================================================================
+    private FileOpener fileOpener;
 
     public DeploymentWindow(Project project, Server server) {
         super();
@@ -100,96 +122,127 @@ public class DeploymentWindow extends NfxStage implements Initializable {
         }
     }
 
+    /**
+     * Faza 1: Creează scena cu StackPane root (necesar pentru overlay-uri).
+     * <p>
+     * Structura vizuală: rootPane (StackPane) → [contentPane (VBox din FXML), overlay]
+     * StackPane-ul permite suprapunerea overlay-urilor peste conținut.
+     * <p>
+     * Ordinea: FXML load (care triggerează initialize()) → creare rootPane →
+     * creare overlayManager → lateInit (componente dependente de overlay).
+     */
     private void initializeWindow() throws IOException {
-        getIcons().add(new Image(Assets.load("/logo.png").toExternalForm()));
-        Parent parent = Assets.load("/fxml/deployment-window.fxml", this);
+        getIcons().add(new Image(Assets.location("/logo.png").toExternalForm()));
+        Parent parent = Assets.loadFxml("/fxml/deployment-window.fxml", this);
 
         contentPane = (VBox) parent;
-        rootPane = new StackPane();
-        rootPane.getChildren().add(contentPane);
+        rootPane = new StackPane(contentPane);
 
-        Scene scene = new Scene(rootPane);
-        setScene(scene);
+        setScene(new Scene(rootPane));
         setTitle(WINDOW_TITLE_PREFIX + project.getName());
-
         setOnCloseRequest(event -> handleWindowClose());
 
-        // Initialize OverlayManager immediately after scene setup
         this.overlayManager = new UIOverlayManager(rootPane, contentPane);
 
-        // Auto-connect
-        connectToServer();
+        lateInit();
     }
 
+    /**
+     * Faza 2 (apelată de FXMLLoader, ÎNAINTE de finalul constructorului).
+     * Creează componentele UI care NU depind de overlayManager sau conexiune.
+     */
     @Override
     public void initialize(URL url, ResourceBundle resourceBundle) {
-        setupTitleBar();
+        logPanel = new LogPanelManager(logArea, logSection, toggleLogBtn);
+        logPanel.setup();
+
+        fileOpener = new FileOpener(logPanel::log);
+
+        actionBar = new DeploymentActionBar(
+                restartServerBtn, downloadLogsBtn, buildProjectBtn,
+                openBrowserBtn, uploadJarsBtn, uploadJspsBtn, uploadAllBtn
+        );
+
+        titleBarManager = new TitleBarManager(
+                this, closeBtn, maxBtn, minBtn, maxShape, iconView, title,
+                (close, max, min) -> {
+                    setCloseControl(close);
+                    setMaxControl(max);
+                    setMinControl(min);
+                }
+        );
+        titleBarManager.setup();
+
+        buildService = new BuildService(project, logPanel::log);
+        browserService = new BrowserService(logPanel::log);
+        fileScannerService = new FileScannerService(project, logPanel::log);
+
+        jarPanel = new FileListPanel(jarListContainer, jarCountLabel,
+                MSG_NO_JAR_FILES, logPanel::log);
+
+        jspPanel = new FileListPanel(jspListContainer, jspCountLabel,
+                MSG_NO_JSP_FILES, logPanel::log);
+
         setupHeader();
-        setupLogArea();
-
-        initializeServices();
-
-        setupUI();
+        setupFileScanner();
         setupButtons();
 
         jarSection.setExpanded(false);
         jspSection.setExpanded(false);
-        disableActionButtons(true);
+        actionBar.setAllDisabled(true);
 
-        log("✓ Deployment window initialized");
-        log("Project: " + project.getName());
-        log("Server: " + server.getName() + " (" + server.getHost() + ")");
+        logPanel.log("✓ Deployment window initialized");
+        logPanel.log("Project: " + project.getName());
+        logPanel.log("Server: " + server.getName() + " (" + server.getHost() + ")");
     }
 
-    private void initializeServices() {
+    /**
+     * Faza 3: Creează componentele care depind de overlayManager și conexiune.
+     * <p>
+     * Lanțul de dependențe:
+     * <pre>
+     * overlayManager ─┬→ connectionHandler ─┬→ uploadHandler
+     *                 │                      └→ restartHandler
+     *                 └→ restartHandler
+     * </pre>
+     * La final, inițiază conexiunea — afișează overlay-ul de loading.
+     */
+    private void lateInit() {
+        ConnectionManager connectionManager = new ConnectionManager(server, logPanel::log);
 
-        connectionManager = new ConnectionManager(server, this::log);
-        fileScannerService = new FileScannerService(project, this::log);
-        buildService = new BuildService(project, this::log);
-        browserService = new BrowserService(this::log);
+        FileUploadService fileUploadService = new FileUploadService(
+                project, connectionManager, logPanel::log);
+        logDownloadService = new LogDownloadService(
+                connectionManager, logPanel::log);
+        RestartService restartService = new RestartService(
+                server, connectionManager, logPanel::log);
 
-        fileUploadService = new FileUploadService(project, connectionManager.getSftpManager(), this::log);
-        logDownloadService = new LogDownloadService(connectionManager.getSftpManager(), this::log);
-        restartService = new RestartService(server, connectionManager.getSftpManager(), this::log);
+        connectionHandler = new ConnectionHandler(
+                server, connectionManager, overlayManager, logPanel::log);
+        connectionHandler.setRestartService(restartService);
+        connectionHandler.setOnConnected(() -> actionBar.setAllDisabled(false));
+        connectionHandler.setOnDisconnected(() -> actionBar.setAllDisabled(true));
+        connectionHandler.setOnReturnToSelection(this::performCleanupAndReturn);
+        connectionHandler.setupCallbacks();
 
-        setupConnectionCallbacks();
-        setupRestartCallbacks();
-    }
-
-    private void setupUI() {
-        fileScannerService.initializeUI(jarListContainer, jspListContainer, jarCountLabel, jspCountLabel);
-        fileScannerService.setupJarSection();
-        fileScannerService.setupJspSection();
-        fileScannerService.startWatchers();
-
-        jspSearchField.textProperty().addListener((obs, oldVal, newVal) ->
-                fileScannerService.filterJspFiles(newVal));
-    }
-
-    private void setupButtons() {
-        restartServerBtn.setOnAction(e -> handleRestartServer());
-        downloadLogsBtn.setOnAction(e -> handleDownloadLogs());
-        buildProjectBtn.setOnAction(e -> handleBuildProject());
-        openBrowserBtn.setOnAction(e -> handleOpenBrowser());
-        uploadJarsBtn.setOnAction(e -> handleUploadJars());
-        uploadJspsBtn.setOnAction(e -> handleUploadJsps());
-        uploadAllBtn.setOnAction(e -> handleUploadAll());
-        toggleLogBtn.setOnAction(e -> toggleLogVisibility());
-        changeBtn.setOnAction(e -> returnToSelectionWindow());
-    }
-
-    private void setupTitleBar() {
-        getIcons().addListener((ListChangeListener<? super Image>) observable -> {
-            if (!getIcons().isEmpty()) iconView.setImage(getIcons().get(0));
+        logPanel.setConnectionErrorCallback(msg -> {
+            if (connectionHandler.isConnected()) {
+                connectionHandler.notifyConnectionLost();
+            }
         });
-        titleProperty().addListener((observable, oldValue, newValue) -> title.setText(newValue));
 
-        setCloseControl(closeBtn);
-        setMaxControl(maxBtn);
-        setMinControl(minBtn);
+        uploadHandler = new UploadHandler(
+                jarPanel, jspPanel, fileUploadService,
+                connectionHandler, actionBar, logPanel::log);
 
-        handleMaxStateChangeShape(getWindowState());
-        windowStateProperty().addListener((obs, oldState, newState) -> handleMaxStateChangeShape(newState));
+        restartHandler = new RestartHandler(
+                restartService, restartServerBtn, overlayManager, this,
+                logPanel::log,
+                server.getName() + " (" + server.getHost() + ")",
+                project.getName());
+        restartHandler.setupCallbacks();
+
+        connectionHandler.connect();
     }
 
     private void setupHeader() {
@@ -197,228 +250,31 @@ public class DeploymentWindow extends NfxStage implements Initializable {
         serverNameLabel.setText(server.getName() + " (" + server.getHost() + ")");
     }
 
-    private void setupLogArea() {
-        logArea.setEditable(false);
-        logArea.setWrapText(true);
+    private void setupFileScanner() {
+        jarPanel.loadFiles(fileScannerService.scanJarFiles());
+        jspPanel.loadFiles(fileScannerService.scanJspFiles());
+
+        fileScannerService.startJarWatcher(jarPanel::handleFileChange);
+        fileScannerService.startJspWatcher(jspPanel::handleFileChange);
+
+        jspSearchField.textProperty().addListener((obs, oldVal, newVal) ->
+                jspPanel.filter(newVal));
     }
 
-    // =================================================================================================================
-    // CONNECTION LIFECYCLE & CALLBACKS
-    // =================================================================================================================
-
-    public void connectToServer() {
-        isConnecting = true;
-        overlayManager.showLoadingOverlay("Connecting to Server...",
-                server.getName() + " (" + server.getHost() + ")");
-        disableActionButtons(true);
-
-        var connectionTask = connectionManager.connectAsync();
-        Thread connectionThread = new Thread(connectionTask, "SFTP-Connection");
-        connectionThread.setDaemon(true);
-        connectionThread.start();
+    private void setupButtons() {
+        restartServerBtn.setOnAction(e -> restartHandler.handleRestart());
+        downloadLogsBtn.setOnAction(e -> handleDownloadLogs());
+        buildProjectBtn.setOnAction(e -> handleBuildProject());
+        openBrowserBtn.setOnAction(e -> handleOpenBrowser());
+        uploadJarsBtn.setOnAction(e -> uploadHandler.uploadJars());
+        uploadJspsBtn.setOnAction(e -> uploadHandler.uploadJsps());
+        uploadAllBtn.setOnAction(e -> uploadHandler.uploadAll());
+        changeBtn.setOnAction(e -> returnToSelectionWindow());
     }
 
-    private void setupConnectionCallbacks() {
-        connectionManager.setOnConnectionEstablished(() -> {
-            if (isConnecting) {
-                overlayManager.hideOverlay();
-                isConnecting = false;
-            }
-            disableActionButtons(false);
-            if (restartService.initialize()) restartService.startPolling();
-        });
-
-        connectionManager.setOnConnectionLost(() -> {
-            if (restartService != null) restartService.stopPolling();
-            if (!isConnecting) {
-                disableActionButtons(true);
-                showReconnectOverlay();
-            }
-        });
-
-        connectionManager.setOnReconnectStarted(() -> {
-            isConnecting = true;
-            overlayManager.showLoadingOverlay("Reconnecting to Server...",
-                    server.getName() + " (" + server.getHost() + ")");
-        });
-
-        connectionManager.setOnConnectionFailed(errorMessage -> {
-            isConnecting = false;
-            overlayManager.showReconnectFailure(
-                    "Connection Failed",
-                    errorMessage,
-                    this::connectToServer,
-                    this::performCleanupAndReturn
-            );
-        });
-    }
-
-    private void showReconnectOverlay() {
-        overlayManager.showReconnectOverlay(
-                server.getName(),
-                server.getHost(),
-                this::handleReconnect,
-                this::performCleanupAndReturn
-        );
-    }
-
-    private void handleReconnect() {
-        log("🔄 Attempting to reconnect...");
-        isConnecting = true;
-        overlayManager.showLoadingOverlay("Reconnecting...", "Attempting to reach " + server.getHost());
-
-        var reconnectTask = connectionManager.reconnectAsync();
-        reconnectTask.setOnFailed(event -> {
-            isConnecting = false;
-            String errorMsg = reconnectTask.getException() != null ?
-                    reconnectTask.getException().getMessage() : "Unknown Error";
-
-            overlayManager.showReconnectFailure(
-                    "Reconnection Failed",
-                    errorMsg,
-                    this::handleReconnect,
-                    this::performCleanupAndReturn
-            );
-        });
-
-        Thread thread = new Thread(reconnectTask, "SFTP-Reconnect");
-        thread.setDaemon(true);
-        thread.start();
-    }
-
-    // =================================================================================================================
-    // NAVIGATION & CLEANUP
-    // =================================================================================================================
-
-    private void returnToSelectionWindow() {
-        log("🔄 Requesting return to selection window...");
-        overlayManager.showSimpleBlur();
-
-        boolean confirmed = CustomAlert.showConfirmation(
-                this,
-                "Change Project/Server",
-                "This will disconnect from the server and return to the selection window.\n\nAre you sure?"
-        );
-
-        overlayManager.hideOverlay();
-        if (confirmed) {
-            log("✓ User confirmed return to selection");
-            performCleanupAndReturn();
-        } else {
-            log("⚠ Return to selection cancelled by user");
-        }
-    }
-
-    private void performCleanupAndReturn() {
-        log("✓ Performing cleanup...");
-        cleanupResources();
-        log("✓ Cleanup completed");
-
-        if (selectionWindow != null) {
-            Platform.runLater(() -> selectionWindow.show());
-        } else {
-            Platform.runLater(() -> {
-                try {
-                    new SelectionWindow().show();
-                } catch (Exception e) {
-                    LOGGER.severe("Error creating selection window: " + e.getMessage());
-                }
-            });
-        }
-        close();
-    }
-
-    private void handleWindowClose() {
-        log("🔌 Application closing...");
-        cleanupResources();
-    }
-
-    private void cleanupResources() {
-        if (restartService != null) restartService.shutdown();
-        if (fileScannerService != null) fileScannerService.stopWatchers();
-
-        if (connectionManager != null) {
-            // Remove listener to prevent 'Connection Lost' loop during intentional disconnect
-            connectionManager.setOnConnectionLost(null);
-            connectionManager.disconnect();
-        }
-    }
-
-    // =================================================================================================================
-    // FEATURE: RESTART SERVER
-    // =================================================================================================================
-
-    private void handleRestartServer() {
-        log("🔄 Restart server requested...");
-        overlayManager.showSimpleBlur();
-
-        boolean confirmed = CustomAlert.showConfirmation(
-                this,
-                "Restart " + server.getName() + " (" + server.getHost() + ")?",
-                "Requesting will notify users.\n\n" +
-                        "Auto-executes in 30s unless rejected."
-        );
-
-        overlayManager.hideOverlay();
-
-        if (confirmed) {
-            log("✓ User confirmed server restart request");
-            executeRestartRequest();
-        } else {
-            log("⚠ Server restart request cancelled by user");
-        }
-    }
-
-    private void executeRestartRequest() {
-        var restartTask = restartService.requestRestartAsync(project.getName());
-        restartTask.setOnFailed(event -> {
-            Throwable error = restartTask.getException();
-            log("✗ Failed to send restart request: " + error.getMessage());
-            CustomAlert.showError("Restart Request Failed", error.getMessage());
-        });
-
-        Thread thread = new Thread(restartTask, "Restart-Request");
-        thread.setDaemon(true);
-        thread.start();
-    }
-
-    private void setupRestartCallbacks() {
-        restartService.addStatusListener(status -> Platform.runLater(() -> {
-            if (status == null || status.getStatus() == null) return;
-            String currentStatus = status.getStatus().toLowerCase().trim();
-
-            if ("executing".equals(currentStatus)) {
-                startRestartTimerAnimation();
-            } else if ("completed".equals(currentStatus) || "idle".equals(currentStatus) || "rejected".equals(currentStatus)) {
-                stopRestartTimerAnimation();
-            }
-        }));
-
-        restartService.setOnButtonStateChanged(disabled -> restartServerBtn.setDisable(disabled));
-    }
-
-    private void startRestartTimerAnimation() {
-        if (restartTimerTimeline != null) return;
-
-        restartTimerTimeline = new Timeline(new KeyFrame(Duration.millis(TIMER_UPDATE_INTERVAL_MS), event ->
-                restartServerBtn.setText("🔄 Restarting " + restartService.getFormattedElapsedTime())
-        ));
-        restartTimerTimeline.setCycleCount(Timeline.INDEFINITE);
-        restartTimerTimeline.play();
-    }
-
-    private void stopRestartTimerAnimation() {
-        if (restartTimerTimeline != null) {
-            restartTimerTimeline.stop();
-            restartTimerTimeline = null;
-        }
-        restartServerBtn.setText(restartService.getOriginalButtonText());
-    }
-
-    // =================================================================================================================
-    // FEATURE: FILE UPLOAD & BUILD
-    // =================================================================================================================
-
+    /**
+     * Build asincron: validare → disable buton → build pe thread daemon → re-enable.
+     */
     private void handleBuildProject() {
         var validation = buildService.validateConfiguration();
         if (!validation.isSuccess()) {
@@ -426,216 +282,141 @@ public class DeploymentWindow extends NfxStage implements Initializable {
             return;
         }
 
-        buildProjectBtn.setDisable(true);
+        actionBar.getBuildProjectBtn().setDisable(true);
         var buildTask = buildService.buildAsync();
 
         buildTask.setOnSucceeded(event -> {
-            buildProjectBtn.setDisable(false);
+            actionBar.getBuildProjectBtn().setDisable(false);
             if (!buildTask.getValue().isSuccess()) {
                 CustomAlert.showError("Build Failed", buildTask.getValue().getErrorMessage());
             }
         });
 
         buildTask.setOnFailed(event -> {
-            buildProjectBtn.setDisable(false);
+            actionBar.getBuildProjectBtn().setDisable(false);
             CustomAlert.showError("Build Failed", buildTask.getException().getMessage());
         });
 
-        Thread thread = new Thread(buildTask, "Ant-Build");
-        thread.setDaemon(true);
-        thread.start();
+        AsyncHelper.runDaemon(buildTask, "Ant-Build");
     }
 
-    private void handleUploadAll() {
-        var jarMap = fileScannerService.getJarCheckBoxMap();
-        var jspMap = fileScannerService.getJspCheckBoxMap();
-
-        long jarCount = jarMap.values().stream().filter(CheckBox::isSelected).count();
-        long jspCount = jspMap.values().stream().filter(CheckBox::isSelected).count();
-
-        if (jarCount == 0 && jspCount == 0) {
-            log("⚠ No files selected");
-            CustomAlert.showWarning("No Files Selected", MSG_NO_FILES_SELECTED);
-            return;
-        }
-
-        if (!checkConnection()) return;
-
-        log("📤 Starting upload of all selected files...");
-        disableUploadButtons(true);
-
-        Thread uploadThread = new Thread(() -> {
-            if (jarCount > 0) {
-                Platform.runLater(() -> log("### Uploading JARs ###"));
-                var jarResult = fileUploadService.uploadJars(jarMap);
-                if (jarResult.isConnectionLost()) {
-                    Platform.runLater(() -> {
-                        log("⚠ Skipping JSP upload due to connection loss");
-                        disableUploadButtons(false);
-                    });
-                    return;
-                }
-            }
-
-            if (jspCount > 0) {
-                Platform.runLater(() -> log("### Uploading JSPs ###"));
-                fileUploadService.uploadJsps(jspMap);
-            }
-
-            Platform.runLater(() -> {
-                log("####################################");
-                log("✓ All uploads completed");
-                disableUploadButtons(false);
-            });
-        }, "Upload-All");
-
-        uploadThread.setDaemon(true);
-        uploadThread.start();
-    }
-
-    private void handleUploadJars() {
-        var selectedJars = fileScannerService.getJarCheckBoxMap();
-        if (selectedJars.values().stream().noneMatch(CheckBox::isSelected)) {
-            CustomAlert.showWarning("No Files Selected", MSG_NO_FILES_SELECTED);
-            return;
-        }
-        if (!checkConnection()) return;
-
-        disableUploadButtons(true);
-        Thread uploadThread = new Thread(() -> {
-            fileUploadService.uploadJars(selectedJars);
-            Platform.runLater(() -> disableUploadButtons(false));
-        }, "JAR-Upload");
-        uploadThread.setDaemon(true);
-        uploadThread.start();
-    }
-
-    private void handleUploadJsps() {
-        var selectedJsps = fileScannerService.getJspCheckBoxMap();
-        if (selectedJsps.values().stream().noneMatch(CheckBox::isSelected)) {
-            CustomAlert.showWarning("No Files Selected", MSG_NO_FILES_SELECTED);
-            return;
-        }
-        if (!checkConnection()) return;
-
-        disableUploadButtons(true);
-        Thread uploadThread = new Thread(() -> {
-            fileUploadService.uploadJsps(selectedJsps);
-            Platform.runLater(() -> disableUploadButtons(false));
-        }, "JSP-Upload");
-        uploadThread.setDaemon(true);
-        uploadThread.start();
-    }
-
-    // =================================================================================================================
-    // FEATURE: LOGS & BROWSER
-    // =================================================================================================================
-
+    /**
+     * Download log asincron: validare → verificare conexiune → download → notificare.
+     */
     private void handleDownloadLogs() {
         if (!logDownloadService.validateConfiguration().isSuccess()) {
-            CustomAlert.showError("Configuration Missing", logDownloadService.validateConfiguration().getErrorMessage());
+            CustomAlert.showError("Configuration Missing",
+                    logDownloadService.validateConfiguration().getErrorMessage());
             return;
         }
-        if (!checkConnection()) return;
+        if (!connectionHandler.isConnected()) {
+            CustomAlert.showError("Connection Error", MSG_NOT_CONNECTED);
+            return;
+        }
 
-        downloadLogsBtn.setDisable(true);
+        actionBar.getDownloadLogsBtn().setDisable(true);
         var downloadTask = logDownloadService.downloadAsync();
 
         downloadTask.setOnSucceeded(event -> {
-            downloadLogsBtn.setDisable(false);
+            actionBar.getDownloadLogsBtn().setDisable(false);
             var result = downloadTask.getValue();
             if (result.isSuccess()) {
-                showDownloadSuccessNotification(result.getDownloadedFile());
+                showDownloadNotification(result.getDownloadedFile());
             } else {
                 CustomAlert.showError("Download Failed", result.getErrorMessage());
             }
         });
 
         downloadTask.setOnFailed(event -> {
-            downloadLogsBtn.setDisable(false);
+            actionBar.getDownloadLogsBtn().setDisable(false);
             CustomAlert.showError("Download Failed", downloadTask.getException().getMessage());
         });
 
-        Thread thread = new Thread(downloadTask, "Log-Download");
-        thread.setDaemon(true);
-        thread.start();
+        AsyncHelper.runDaemon(downloadTask, "Log-Download");
     }
 
-    private void showDownloadSuccessNotification(java.io.File downloadedFile) {
-        new NotificationController().showDownloadSuccessNotification(downloadedFile.getName(), () -> {
-            log("🖱 User clicked 'Open With' button");
-            if (!logDownloadService.openWithDialog(downloadedFile) && !logDownloadService.openContainingFolder(downloadedFile)) {
-                CustomAlert.showError("Open Failed", "Could not open file or folder.\n" + downloadedFile.getAbsolutePath());
-            }
-        });
+    /**
+     * Notificare toast la download reușit cu buton "Open With...".
+     * Fallback: dacă "Open With" eșuează, încearcă deschiderea folderului.
+     */
+    private void showDownloadNotification(File downloadedFile) {
+        new NotificationController().showDownloadSuccessNotification(
+                downloadedFile.getName(), () -> {
+                    logPanel.log("🖱 User clicked 'Open With' button");
+                    if (!fileOpener.openWithDialog(downloadedFile)
+                            && !fileOpener.openContainingFolder(downloadedFile)) {
+                        CustomAlert.showError("Open Failed",
+                                "Could not open file or folder.\n" + downloadedFile.getAbsolutePath());
+                    }
+                });
     }
 
     private void handleOpenBrowser() {
         if (!browserService.openServer(server)) {
             String url = ApplicationConfig.getInstance().getFullBrowserUrl(server.getHost());
-            CustomAlert.showError("Browser Error", "Failed to open browser.\nPlease open manually:\n" + url);
+            CustomAlert.showError("Browser Error",
+                    "Failed to open browser.\nPlease open manually:\n" + url);
         }
     }
 
-    private void toggleLogVisibility() {
-        logVisible = !logVisible;
-        logSection.setVisible(logVisible);
-        logSection.setManaged(logVisible);
-        toggleLogBtn.setText(logVisible ? "📋 Hide Logs" : "📋 Show Logs");
-        if (logVisible) log("✓ Log panel opened");
+    /**
+     * Confirmare + cleanup + revenire la SelectionWindow.
+     * Overlay-ul de blur e afișat în spatele dialogului de confirmare.
+     */
+    private void returnToSelectionWindow() {
+        logPanel.log("🔄 Requesting return to selection window...");
+        overlayManager.showSimpleBlur();
+
+        boolean confirmed = CustomAlert.showConfirmation(
+                this, "Change Project/Server",
+                "This will disconnect from the server and return to the selection window.\n\nAre you sure?"
+        );
+
+        overlayManager.hideOverlay();
+        if (confirmed) {
+            logPanel.log("✓ User confirmed return to selection");
+            performCleanupAndReturn();
+        } else {
+            logPanel.log("⚠ Return to selection cancelled by user");
+        }
     }
 
-    // =================================================================================================================
-    // HELPERS & UTILITIES
-    // =================================================================================================================
+    /**
+     * Cleanup complet și navigare înapoi la SelectionWindow.
+     * Refolosește instanța existentă dacă există, altfel creează una nouă.
+     */
+    private void performCleanupAndReturn() {
+        logPanel.log("✓ Performing cleanup...");
+        cleanupResources();
+        logPanel.log("✓ Cleanup completed");
 
-    private void log(String message) {
         Platform.runLater(() -> {
-            String timestamp = LocalDateTime.now().format(TIME_FORMATTER);
-            logArea.appendText("[" + timestamp + "] " + message + "\n");
-            monitorLogForErrors(message);
-        });
-    }
-
-    private void monitorLogForErrors(String message) {
-        if (connectionManager != null && connectionManager.isConnected()) {
-            String lowerMsg = message.toLowerCase();
-            if (lowerMsg.contains("session is down") ||
-                    lowerMsg.contains("ssh session not connected") ||
-                    lowerMsg.contains("connection lost")) {
-                connectionManager.notifyConnectionLost();
+            if (selectionWindow != null) {
+                selectionWindow.show();
+            } else {
+                try {
+                    new SelectionWindow().show();
+                } catch (Exception e) {
+                    LOGGER.severe("Error creating selection window: " + e.getMessage());
+                }
             }
-        }
-    }
-
-    private boolean checkConnection() {
-        if (!connectionManager.isConnected()) {
-            CustomAlert.showError("Connection Error", MSG_NOT_CONNECTED);
-            return false;
-        }
-        return true;
-    }
-
-    private void disableActionButtons(boolean disable) {
-        Platform.runLater(() -> {
-            restartServerBtn.setDisable(disable);
-            downloadLogsBtn.setDisable(disable);
-            buildProjectBtn.setDisable(disable);
-            openBrowserBtn.setDisable(disable);
-            disableUploadButtons(disable);
         });
+        close();
     }
 
-    private void disableUploadButtons(boolean disable) {
-        Platform.runLater(() -> {
-            uploadJarsBtn.setDisable(disable);
-            uploadJspsBtn.setDisable(disable);
-            uploadAllBtn.setDisable(disable);
-        });
+    private void handleWindowClose() {
+        logPanel.log("🔌 Application closing...");
+        cleanupResources();
     }
 
-    private void handleMaxStateChangeShape(WindowState state) {
-        maxShape.setContent(Objects.equals(state, WindowState.MAXIMIZED) ? REST_SHAPE : MAX_SHAPE);
+    /**
+     * Oprește toate resursele: restart polling, file watchers, conexiune SFTP.
+     * Ordinea contează: restart (oprește polling) → watchers → conexiune (ultima).
+     */
+    private void cleanupResources() {
+        if (restartHandler != null) restartHandler.shutdown();
+        if (fileScannerService != null) fileScannerService.stopWatchers();
+        if (connectionHandler != null) connectionHandler.disconnect();
     }
 
     @Override

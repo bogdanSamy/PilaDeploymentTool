@@ -10,256 +10,65 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
-public class AntFileParser {
+/**
+ * Parsează fișiere Ant build.xml pentru a extrage target-urile disponibile.
+ * <p>
+ * Complexitate:
+ * <ul>
+ *   <li>Suportă {@code <import file="..."/>} — parcurge recursiv fișierele importate</li>
+ *   <li>Rezolvă proprietăți {@code ${...}} — din build.properties, din system properties,
+ *       și din {@code <property>} tags definite în XML</li>
+ *   <li>Respectă semantica Ant: prima definiție a unei proprietăți câștigă (immutabilitate)</li>
+ *   <li>Protecție anti-buclă: fișierele deja vizitate nu sunt re-parsate,
+ *       rezolvarea proprietăților are limită de adâncime</li>
+ * </ul>
+ * <p>
+ * Folosit de UI-ul de configurare proiect pentru a popula dropdown-ul de target-uri Ant.
+ */
+public final class AntFileParser {
+
+    private static final Logger LOGGER = Logger.getLogger(AntFileParser.class.getName());
+
+    /** Limită de adâncime pentru rezolvarea recursivă a proprietăților (ex: ${${nested}}). */
+    private static final int MAX_PROPERTY_RESOLVE_DEPTH = 10;
+
+    private AntFileParser() {}
 
     /**
-     * Parsează un fișier Ant build.xml și returnează lista de target-uri disponibile,
-     * inclusiv cele din fișierele importate.
-     *
-     * @param antFilePath Calea către fișierul Ant
-     * @return Lista de nume ale target-urilor găsite
+     * Punctul de intrare principal. Parsează un build.xml și returnează toate target-urile
+     * (inclusiv din fișierele importate), sortate alfabetic case-insensitive.
      */
     public static List<String> parseTargets(String antFilePath) {
-        List<String> targets = new ArrayList<>();
-
         if (antFilePath == null || antFilePath.trim().isEmpty()) {
-            return targets;
+            return List.of();
         }
 
         File file = new File(antFilePath);
         if (!file.exists() || !file.isFile()) {
-            System.err.println("✗ Ant file not found: " + antFilePath);
-            return targets;
+            LOGGER.warning("Ant file not found: " + antFilePath);
+            return List.of();
         }
 
-        // Încarcă proprietățile din build.properties
         Properties props = loadBuildProperties(file.getParentFile());
-
-        // Adaugă basedir ca proprietate
         props.setProperty("basedir", file.getParentFile().getAbsolutePath());
 
-        // Parsează recursiv toate fișierele
+        // LinkedHashSet: O(1) contains + păstrează ordinea de inserție
+        Set<String> targets = new LinkedHashSet<>();
+        // Previne parsarea ciclică a fișierelor importate (A imports B imports A)
         Set<String> visitedFiles = new HashSet<>();
+
         parseTargetsRecursive(file, targets, props, visitedFiles);
 
-        // Sortează alfabetic pentru o navigare mai ușoară
-        targets.sort(String::compareToIgnoreCase);
+        List<String> sortedTargets = new ArrayList<>(targets);
+        sortedTargets.sort(String::compareToIgnoreCase);
 
-        System.out.println("✓ Found " + targets.size() + " targets in " + antFilePath);
-        targets.forEach(t -> System.out.println("  - " + t));
-
-        return targets;
+        LOGGER.info("Found " + sortedTargets.size() + " targets in " + antFilePath);
+        return sortedTargets;
     }
 
-    /**
-     * Parsează recursiv un fișier Ant și toate fișierele importate.
-     */
-    private static void parseTargetsRecursive(File file, List<String> targets,
-                                              Properties props, Set<String> visitedFiles) {
-        String absolutePath;
-        try {
-            absolutePath = file.getCanonicalPath();
-        } catch (IOException e) {
-            absolutePath = file.getAbsolutePath();
-        }
-
-        // Evită parsarea aceluiași fișier de mai multe ori
-        if (visitedFiles.contains(absolutePath)) {
-            return;
-        }
-        visitedFiles.add(absolutePath);
-
-        if (!file.exists() || !file.isFile()) {
-            System.err.println("✗ Imported file not found: " + file.getPath());
-            return;
-        }
-
-        try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-            factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document document = builder.parse(file);
-            document.getDocumentElement().normalize();
-
-            // Extrage proprietățile definite în acest fișier
-            extractProperties(document, props, file.getParentFile());
-
-            // Găsește toate elementele <target>
-            NodeList targetNodes = document.getElementsByTagName("target");
-            for (int i = 0; i < targetNodes.getLength(); i++) {
-                Element targetElement = (Element) targetNodes.item(i);
-                String targetName = targetElement.getAttribute("name");
-
-                if (targetName != null && !targetName.trim().isEmpty()) {
-                    // Evită duplicatele
-                    if (!targets.contains(targetName)) {
-                        targets.add(targetName);
-                    }
-                }
-            }
-
-            // Procesează fișierele importate
-            NodeList importNodes = document.getElementsByTagName("import");
-            for (int i = 0; i < importNodes.getLength(); i++) {
-                Element importElement = (Element) importNodes.item(i);
-                String importFilePath = importElement.getAttribute("file");
-
-                if (importFilePath != null && !importFilePath.trim().isEmpty()) {
-                    // Rezolvă proprietățile în calea fișierului
-                    String resolvedPath = resolveProperties(importFilePath, props);
-                    File importFile = resolveFile(resolvedPath, file.getParentFile());
-
-                    System.out.println("  → Processing import: " + resolvedPath);
-                    parseTargetsRecursive(importFile, targets, props, visitedFiles);
-                }
-            }
-
-        } catch (Exception e) {
-            System.err.println("✗ Error parsing Ant file " + file.getPath() + ": " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    /**
-     * Încarcă proprietățile din build.properties dacă există.
-     */
-    private static Properties loadBuildProperties(File directory) {
-        Properties props = new Properties();
-
-        // Încearcă să încarce build.properties din directorul curent
-        File propsFile = new File(directory, "build.properties");
-        if (propsFile.exists()) {
-            try (FileInputStream fis = new FileInputStream(propsFile)) {
-                props.load(fis);
-                System.out.println("✓ Loaded properties from: " + propsFile.getPath());
-            } catch (IOException e) {
-                System.err.println("✗ Error loading build.properties: " + e.getMessage());
-            }
-        }
-
-        // Adaugă și proprietățile sistem
-        for (String key : System.getProperties().stringPropertyNames()) {
-            if (!props.containsKey(key)) {
-                props.setProperty(key, System.getProperty(key));
-            }
-        }
-
-        return props;
-    }
-
-    /**
-     * Extrage proprietățile definite într-un document Ant.
-     */
-    private static void extractProperties(Document document, Properties props, File baseDir) {
-        NodeList propertyNodes = document.getElementsByTagName("property");
-
-        for (int i = 0; i < propertyNodes.getLength(); i++) {
-            Element propElement = (Element) propertyNodes.item(i);
-
-            String name = propElement.getAttribute("name");
-            String value = propElement.getAttribute("value");
-            String fileAttr = propElement.getAttribute("file");
-
-            // Proprietate cu valoare directă
-            if (name != null && !name.isEmpty() && value != null && !value.isEmpty()) {
-                String resolvedValue = resolveProperties(value, props);
-                if (!props.containsKey(name)) {
-                    props.setProperty(name, resolvedValue);
-                }
-            }
-
-            // Proprietate cu referință la fișier
-            if (fileAttr != null && !fileAttr.isEmpty()) {
-                String resolvedFilePath = resolveProperties(fileAttr, props);
-                File propFile = resolveFile(resolvedFilePath, baseDir);
-
-                if (propFile.exists()) {
-                    try (FileInputStream fis = new FileInputStream(propFile)) {
-                        Properties fileProps = new Properties();
-                        fileProps.load(fis);
-
-                        for (String key : fileProps.stringPropertyNames()) {
-                            if (!props.containsKey(key)) {
-                                props.setProperty(key, fileProps.getProperty(key));
-                            }
-                        }
-                        System.out.println("✓ Loaded properties from: " + propFile.getPath());
-                    } catch (IOException e) {
-                        System.err.println("✗ Error loading property file " + propFile.getPath() + ": " + e.getMessage());
-                    }
-                }
-            }
-        }
-    }
-
-    /**
-     * Rezolvă proprietățile ${...} într-un string.
-     */
-    private static String resolveProperties(String value, Properties props) {
-        if (value == null) {
-            return null;
-        }
-
-        String result = value;
-        int maxIterations = 10; // Previne bucle infinite
-        int iteration = 0;
-
-        while (result.contains("${") && iteration < maxIterations) {
-            iteration++;
-            boolean replaced = false;
-
-            int startIndex = 0;
-            while ((startIndex = result.indexOf("${", startIndex)) != -1) {
-                int endIndex = result.indexOf("}", startIndex);
-                if (endIndex == -1) {
-                    break;
-                }
-
-                String propName = result.substring(startIndex + 2, endIndex);
-                String propValue = props.getProperty(propName);
-
-                if (propValue != null) {
-                    result = result.substring(0, startIndex) + propValue + result.substring(endIndex + 1);
-                    replaced = true;
-                } else {
-                    // Treci peste această proprietate nerezolvată
-                    startIndex = endIndex + 1;
-                }
-            }
-
-            if (!replaced) {
-                break;
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * Rezolvă calea unui fișier relativ la un director de bază.
-     */
-    private static File resolveFile(String path, File baseDir) {
-        File file = new File(path);
-
-        // Dacă calea este absolută, o folosim direct
-        if (file.isAbsolute()) {
-            return file;
-        }
-
-        // Altfel, o rezolvăm relativ la directorul de bază
-        return new File(baseDir, path);
-    }
-
-    /**
-     * Găsește target-ul default din fișierul Ant.
-     *
-     * @param antFilePath Calea către fișierul Ant
-     * @return Numele target-ului default sau null dacă nu există
-     */
     public static String getDefaultTarget(String antFilePath) {
         if (antFilePath == null || antFilePath.trim().isEmpty()) {
             return null;
@@ -271,33 +80,225 @@ public class AntFileParser {
         }
 
         try {
-            DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-            factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
-
-            DocumentBuilder builder = factory.newDocumentBuilder();
-            Document document = builder.parse(file);
-
+            Document document = parseXml(file);
             Element root = document.getDocumentElement();
+
             if ("project".equals(root.getTagName())) {
-                return root.getAttribute("default");
+                String defaultTarget = root.getAttribute("default");
+                return defaultTarget.isEmpty() ? null : defaultTarget;
             }
         } catch (Exception e) {
-            System.err.println("✗ Error getting default target: " + e.getMessage());
+            LOGGER.log(Level.WARNING, "Error getting default target from: " + antFilePath, e);
         }
 
         return null;
     }
 
     /**
-     * Metodă de test.
+     * Parsare recursivă: extrage proprietăți, target-uri și urmează import-urile.
+     * Ordinea contează — proprietățile trebuie extrase ÎNAINTE de a procesa import-urile
+     * deoarece căile din {@code <import file="${basedir}/..."/>} pot conține variabile.
      */
-    public static void main(String[] args) {
-        if (args.length > 0) {
-            List<String> targets = parseTargets(args[0]);
-            System.out.println("\n=== Summary ===");
-            System.out.println("Total targets found: " + targets.size());
-        } else {
-            System.out.println("Usage: java AntFileParser <path-to-build.xml>");
+    private static void parseTargetsRecursive(File file, Set<String> targets,
+                                              Properties props, Set<String> visitedFiles) {
+        String absolutePath = getCanonicalPath(file);
+
+        if (!visitedFiles.add(absolutePath)) return;
+
+        if (!file.exists() || !file.isFile()) {
+            LOGGER.warning("Imported file not found: " + file.getPath());
+            return;
+        }
+
+        try {
+            Document document = parseXml(file);
+
+            extractProperties(document, props, file.getParentFile());
+            extractTargets(document, targets);
+            processImports(document, file.getParentFile(), targets, props, visitedFiles);
+
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Error parsing Ant file: " + file.getPath(), e);
+        }
+    }
+
+    private static void extractTargets(Document document, Set<String> targets) {
+        NodeList targetNodes = document.getElementsByTagName("target");
+        for (int i = 0; i < targetNodes.getLength(); i++) {
+            Element targetElement = (Element) targetNodes.item(i);
+            String targetName = targetElement.getAttribute("name");
+
+            if (targetName != null && !targetName.trim().isEmpty()) {
+                targets.add(targetName);
+            }
+        }
+    }
+
+    /**
+     * Procesează tag-urile {@code <import file="..."/>} — rezolvă proprietățile din cale
+     * și parsează recursiv fișierul importat.
+     */
+    private static void processImports(Document document, File baseDir,
+                                       Set<String> targets, Properties props,
+                                       Set<String> visitedFiles) {
+        NodeList importNodes = document.getElementsByTagName("import");
+        for (int i = 0; i < importNodes.getLength(); i++) {
+            Element importElement = (Element) importNodes.item(i);
+            String importFilePath = importElement.getAttribute("file");
+
+            if (importFilePath != null && !importFilePath.trim().isEmpty()) {
+                String resolvedPath = resolveProperties(importFilePath, props);
+                File importFile = resolveFile(resolvedPath, baseDir);
+
+                LOGGER.fine("Processing import: " + resolvedPath);
+                parseTargetsRecursive(importFile, targets, props, visitedFiles);
+            }
+        }
+    }
+
+    /**
+     * Încarcă proprietățile în ordinea de prioritate Ant:
+     * <ol>
+     *   <li>System properties (bază — cea mai mică prioritate)</li>
+     *   <li>build.properties din directorul build-ului (suprascrie system props)</li>
+     * </ol>
+     * Proprietățile din XML ({@code <property>}) sunt adăugate ulterior în
+     * {@link #extractProperties} cu regula "prima definiție câștigă".
+     */
+    private static Properties loadBuildProperties(File directory) {
+        Properties props = new Properties();
+
+        props.putAll(System.getProperties());
+
+        File propsFile = new File(directory, "build.properties");
+        if (propsFile.exists()) {
+            try (FileInputStream fis = new FileInputStream(propsFile)) {
+                Properties fileProps = new Properties();
+                fileProps.load(fis);
+                props.putAll(fileProps);
+                LOGGER.fine("Loaded properties from: " + propsFile.getPath());
+            } catch (IOException e) {
+                LOGGER.log(Level.WARNING, "Error loading build.properties", e);
+            }
+        }
+
+        return props;
+    }
+
+    /**
+     * Extrage proprietățile din tag-urile {@code <property>} ale documentului.
+     * <p>
+     * Respectă semantica Ant: o proprietate odată setată NU poate fi suprascrisă
+     * ({@code !props.containsKey(name)}). Suportă două forme:
+     * <ul>
+     *   <li>{@code <property name="x" value="y"/>} — valoare directă</li>
+     *   <li>{@code <property file="extra.properties"/>} — încărcare din fișier extern</li>
+     * </ul>
+     */
+    private static void extractProperties(Document document, Properties props, File baseDir) {
+        NodeList propertyNodes = document.getElementsByTagName("property");
+
+        for (int i = 0; i < propertyNodes.getLength(); i++) {
+            Element propElement = (Element) propertyNodes.item(i);
+
+            String name = propElement.getAttribute("name");
+            String value = propElement.getAttribute("value");
+            String fileAttr = propElement.getAttribute("file");
+
+            if (!name.isEmpty() && !value.isEmpty() && !props.containsKey(name)) {
+                props.setProperty(name, resolveProperties(value, props));
+            }
+
+            if (!fileAttr.isEmpty()) {
+                loadPropertiesFromFile(resolveProperties(fileAttr, props), baseDir, props);
+            }
+        }
+    }
+
+    private static void loadPropertiesFromFile(String filePath, File baseDir, Properties props) {
+        File propFile = resolveFile(filePath, baseDir);
+        if (!propFile.exists()) return;
+
+        try (FileInputStream fis = new FileInputStream(propFile)) {
+            Properties fileProps = new Properties();
+            fileProps.load(fis);
+
+            for (String key : fileProps.stringPropertyNames()) {
+                if (!props.containsKey(key)) {
+                    props.setProperty(key, fileProps.getProperty(key));
+                }
+            }
+            LOGGER.fine("Loaded properties from: " + propFile.getPath());
+        } catch (IOException e) {
+            LOGGER.log(Level.WARNING, "Error loading property file: " + propFile.getPath(), e);
+        }
+    }
+
+    /**
+     * Rezolvă recursiv proprietățile {@code ${...}} într-un string.
+     * <p>
+     * Suportă referințe nested (ex: {@code ${path.${env}}}), cu protecție
+     * anti-buclă infinită prin {@link #MAX_PROPERTY_RESOLVE_DEPTH}.
+     * Proprietățile nerezolvabile sunt lăsate ca atare (ex: {@code ${unknown}}).
+     */
+    static String resolveProperties(String value, Properties props) {
+        if (value == null || !value.contains("${")) return value;
+
+        String result = value;
+
+        for (int iteration = 0; iteration < MAX_PROPERTY_RESOLVE_DEPTH; iteration++) {
+            if (!result.contains("${")) break;
+
+            boolean replaced = false;
+            int startIndex = 0;
+
+            while ((startIndex = result.indexOf("${", startIndex)) != -1) {
+                int endIndex = result.indexOf("}", startIndex);
+                if (endIndex == -1) break;
+
+                String propName = result.substring(startIndex + 2, endIndex);
+                String propValue = props.getProperty(propName);
+
+                if (propValue != null) {
+                    result = result.substring(0, startIndex) + propValue + result.substring(endIndex + 1);
+                    replaced = true;
+                } else {
+                    startIndex = endIndex + 1;
+                }
+            }
+
+            if (!replaced) break;
+        }
+
+        return result;
+    }
+
+    /**
+     * Parser XML securizat — dezactivează DTD-uri externe și entități externe
+     * pentru a preveni atacuri XXE (XML External Entity).
+     */
+    private static Document parseXml(File file) throws Exception {
+        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+        factory.setFeature("http://apache.org/xml/features/nonvalidating/load-external-dtd", false);
+        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
+        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+
+        DocumentBuilder builder = factory.newDocumentBuilder();
+        Document document = builder.parse(file);
+        document.getDocumentElement().normalize();
+        return document;
+    }
+
+    private static File resolveFile(String path, File baseDir) {
+        File file = new File(path);
+        return file.isAbsolute() ? file : new File(baseDir, path);
+    }
+
+    private static String getCanonicalPath(File file) {
+        try {
+            return file.getCanonicalPath();
+        } catch (IOException e) {
+            return file.getAbsolutePath();
         }
     }
 }

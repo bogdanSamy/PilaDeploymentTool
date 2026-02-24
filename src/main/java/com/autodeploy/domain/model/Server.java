@@ -1,5 +1,6 @@
 package com.autodeploy.domain.model;
 
+import com.autodeploy.core.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -7,12 +8,26 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * Configurație de server SSH/SFTP pentru deployment.
+ * Persistat în servers.json prin {@link com.autodeploy.domain.manager.ServerManager}.
+ * <p>
+ * <b>Atenție:</b> Parola este stocată în clar (plaintext) în fișierul JSON.
+ * Acceptabil pentru un tool intern; pentru producție ar trebui integrare
+ * cu un credential store (Keychain, Windows Credential Manager, etc.).
+ */
 public class Server {
 
+    /** Script implicit pentru restart manager — suprascris per-server dacă e necesar. */
     private static final String DEFAULT_RESTART_MANAGER_SCRIPT = "/nodel/testeUpload/restart_manager.sh";
     private static final int DEFAULT_PORT = 22;
 
-    private String id, name, host, username,password,restartManagerScript;
+    private String id;
+    private String name;
+    private String host;
+    private String username;
+    private String password;
+    private String restartManagerScript;
     private int port;
 
     public Server() {
@@ -48,7 +63,7 @@ public class Server {
         this.restartManagerScript = restartManagerScript;
     }
 
-    // =================================================================================================================
+    // --- Getters / Setters ---
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -68,33 +83,26 @@ public class Server {
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
 
+    /** Returnează scriptul configurat sau default-ul dacă nu e setat. */
     public String getRestartManagerScript() {
-        return (restartManagerScript != null && !restartManagerScript.isEmpty())
-                ? restartManagerScript
-                : DEFAULT_RESTART_MANAGER_SCRIPT;
+        return StringUtils.defaultIfEmpty(restartManagerScript, DEFAULT_RESTART_MANAGER_SCRIPT);
     }
 
     public void setRestartManagerScript(String restartManagerScript) {
         this.restartManagerScript = restartManagerScript;
     }
 
-    // =================================================================================================================
-
     @JsonIgnore
     public boolean isValid() {
-        return isNotEmpty(name) && isNotEmpty(host) && isNotEmpty(username);
+        return StringUtils.isNotEmpty(name)
+                && StringUtils.isNotEmpty(host)
+                && port > 0
+                && StringUtils.isNotEmpty(username)
+                && StringUtils.isNotEmpty(password);
     }
-
-    private boolean isNotEmpty(String str) {
-        return str != null && !str.trim().isEmpty();
-    }
-
-    // =================================================================================================================
 
     @Override
-    public String toString() {
-        return name + " (" + host + ")";
-    }
+    public String toString() { return name + " (" + host + ")"; }
 
     @Override
     public boolean equals(Object o) {
@@ -105,7 +113,5 @@ public class Server {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(id);
-    }
+    public int hashCode() { return Objects.hash(id); }
 }

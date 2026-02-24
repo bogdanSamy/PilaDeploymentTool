@@ -6,9 +6,6 @@
     -fx-background-color: #06603A;
 }
 
-
-
-
 .menu-bar{
     -fx-background-color: transparent;
     -fx-border-width: 0;
@@ -33,7 +30,6 @@ menu{
 .context-menu .menu:hover .icons{
     -fx-fill: #F3F3F3;
 }
-
 
 .context-menu{
     -fx-background-insets: 0;
@@ -66,9 +62,6 @@ menu{
     -fx-font-weight: bold;
 }
 
-/**
-=====================================================================
- */
 .close,
 .hit-btn{
     -fx-min-width: 46;

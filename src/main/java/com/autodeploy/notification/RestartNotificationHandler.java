@@ -1,34 +1,66 @@
 package com.autodeploy.notification;
 
 import com.autodeploy.domain.manager.RestartManager;
-import com.autodeploy.domain.manager.RestartManager.RestartStatus;
-import com.autodeploy.ui.dialogs.CustomAlert;
+import com.autodeploy.domain.model.RestartStatus;
+import com.autodeploy.ui.dialog.CustomAlert;
 import javafx.application.Platform;
 
-import java.time.Instant;
-import java.time.ZoneId;
-import java.time.format.DateTimeFormatter;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+/**
+ * Gestionează notificările legate de restart server.
+ * Se înregistrează ca listener la {@link RestartManager} și transformă
+ * schimbările de status în notificări vizuale + mesaje de log.
+ * <p>
+ * Logica de notificare e diferențiată pe roluri:
+ * <ul>
+ *   <li><b>Requester</b> (cel care a cerut restartul) — primește confirmări/rejecții</li>
+ *   <li><b>Ceilalți utilizatori</b> — primesc notificări cu opțiunea de a da reject</li>
+ * </ul>
+ * <p>
+ * Mecanisme anti-spam:
+ * <ul>
+ *   <li><b>Debounce</b> — ignoră statusuri identice primite la mai puțin de {DEBOUNCE_MS}ms</li>
+ *   <li><b>Pending dedup</b> — un request pending cu același requester+timestamp nu se notifică de 2 ori</li>
+ *   <li><b>Executing dedup</b> — un restart executing cu același requester+requestedAt nu re-notifică
+ *       (important când polling-ul returnează repeated "executing" status)</li>
+ *   <li><b>Override detection</b> — detectează când un request nou înlocuiește unul existent</li>
+ * </ul>
+ */
 public class RestartNotificationHandler {
+
+    private static final Logger LOGGER = Logger.getLogger(RestartNotificationHandler.class.getName());
+
+    /** Interval minim între două notificări cu aceeași cheie (status + update + requester). */
+    private static final long DEBOUNCE_MS = 1000;
+
     private final RestartManager restartManager;
     private final String currentUsername;
     private final Consumer<String> logger;
 
+    /** Callback pentru actualizarea UI-ului (ex: butoane, labels în DeploymentWindow). */
     private Consumer<RestartStatus> uiUpdateCallback;
 
+    /** Notificarea curentă afișată. Maxim una activă la un moment dat. */
     private NotificationController activeNotification;
-    private String lastNotificationStatus = null;
-    private long lastNotificationTime = 0;
-    private static final long DEBOUNCE_MS = 1000;
-    private Thread timerThread;
 
-    // ✅ Previne notificări duplicate pentru același request
-    private String lastShownPendingRequest = null;
-    private NotificationController currentPendingNotification = null;
+    // --- State pentru deduplicare ---
+    private String lastStatusKey = null;
+    private long lastStatusTime = 0;
+    /** Cheia ultimului pending notificat — previne re-afișarea aceluiași request. */
+    private String lastShownPendingKey = null;
 
-    private static final DateTimeFormatter TIME_FORMATTER =
-            DateTimeFormatter.ofPattern("HH:mm:ss").withZone(ZoneId.systemDefault());
+    // --- State pentru override detection ---
+    /** Status-ul anterior — folosit pentru a detecta tranziția pending→pending (override). */
+    private String previousStatus = null;
+    private String previousRequester = null;
+
+    // --- State pentru executing deduplication ---
+    /** Ultimul restart executing notificat. Previne re-notificarea la fiecare poll. */
+    private String lastExecutingRequester = null;
+    private Long lastExecutingRequestedAt = null;
 
     public RestartNotificationHandler(RestartManager restartManager,
                                       String currentUsername,
@@ -44,309 +76,262 @@ public class RestartNotificationHandler {
         this.uiUpdateCallback = callback;
     }
 
+    public void shutdown() {
+        dismissActiveNotification();
+    }
+
+    /**
+     * Punct central de procesare a schimbărilor de status.
+     * <p>
+     * Fluxul:
+     * <ol>
+     *   <li>Validare + debounce</li>
+     *   <li>Propagare către UI callback (dacă există)</li>
+     *   <li>Override detection (request nou peste unul existent)</li>
+     *   <li>Dismiss notificarea veche (dacă status != pending)</li>
+     *   <li>Dispatch pe tipul de status</li>
+     *   <li>Actualizare state intern (previousStatus, previousRequester)</li>
+     * </ol>
+     */
     private void handleStatusChange(RestartStatus status) {
-        if (status == null) {
-            logger.accept("⚠ Warning: Received null status update");
+        if (status == null || status.getStatus() == null || status.getStatus().isEmpty()) {
+            LOGGER.warning("Received invalid status update");
             return;
         }
 
-        if (status.getStatus() == null || status.getStatus().isEmpty()) {
-            logger.accept("⚠ Warning: Status has null or empty status string");
-            return;
-        }
+        if (isDuplicate(status)) return;
 
-        String statusKey = status.getStatus() + "_" + status.getVersion() + "_" + status.getRequester();
-        long now = System.currentTimeMillis();
-
-        // Deduplicare cu time window
-        if (statusKey.equals(lastNotificationStatus) &&
-                (now - lastNotificationTime) < DEBOUNCE_MS) {
-            // logger.accept("🔕 Duplicate notification suppressed: " + statusKey); // Optional debug
-            return;
-        }
-
-        lastNotificationStatus = statusKey;
-        lastNotificationTime = now;
-
-        // ✅ NOTIFICĂ UI-ul MEREU (pentru timer și disabled state)
         if (uiUpdateCallback != null) {
             Platform.runLater(() -> uiUpdateCallback.accept(status));
         }
 
-        // ✅ FORCE CLOSE: If status is NOT pending, kill any active 'Reject' or 'Request' popup immediately
-        if (!"pending".equals(status.getStatus())) {
+        boolean isOverride = detectOverride(status);
+
+        if (!status.isPending()) {
             dismissActiveNotification();
         }
 
-        switch (status.getStatus()) {
-            case "pending":
-                handlePendingNotification(status);
-                break;
+        switch (status.getStatus().toLowerCase()) {
+            case "pending"   -> handlePending(status, isOverride);
+            case "rejected"  -> handleRejected(status);
+            case "executing" -> {
+                boolean isNewExecution = lastExecutingRequester == null
+                        || lastExecutingRequestedAt == null
+                        || !status.getRequester().equals(lastExecutingRequester)
+                        || !status.getRequestedAt().equals(lastExecutingRequestedAt);
 
-            case "rejected":
-                handleRejectedNotification(status);
-                break;
-
-            case "executing":
-                handleExecutingNotification(status);
-                break;
-
-            case "completed": // ✅ CAZ NOU
-                handleCompletedNotification(status);
-                break;
-
-
-            case "idle":
-                dismissActiveNotification();
-                break;
-
-            default:
-                logger.accept("⚠ Unknown status: " + status.getStatus());
-                break;
+                if (isNewExecution) {
+                    handleExecuting(status);
+                    lastExecutingRequester = status.getRequester();
+                    lastExecutingRequestedAt = status.getRequestedAt();
+                }
+            }
+            case "completed" -> handleCompleted(status);
+            case "idle"      -> dismissActiveNotification();
+            default          -> LOGGER.warning("Unknown status: " + status.getStatus());
         }
+
+        previousStatus = status.getStatus();
+        previousRequester = status.getRequester();
     }
 
-    private void handlePendingNotification(RestartStatus status) {
-        if (status.getRequester() == null) {
-            logger.accept("⚠ Warning: Pending status has null requester");
-            return;
-        }
+    /**
+     * Gestionează statusul "pending".
+     * <p>
+     * Comportament diferențiat:
+     * <ul>
+     *   <li><b>Requester:</b> Notificare simplă de confirmare (cu countdown)</li>
+     *   <li><b>Alți useri:</b> Notificare importantă cu buton "Reject" (fără auto-close)</li>
+     * </ul>
+     * <p>
+     * Dacă {@code isOverride} e true, mesajul indică explicit că un request anterior
+     * a fost înlocuit (override = pending nou peste pending/executing existent).
+     */
+    private void handlePending(RestartStatus status, boolean isOverride) {
+        if (status.getRequester() == null) return;
 
-        String requestKey = "pending_" + status.getRequester() + "_" + status.getRequestedAt();
-
-        if (requestKey.equals(lastShownPendingRequest)) {
-            return;
-        }
-
-        lastShownPendingRequest = requestKey;
+        String pendingKey = "pending_" + status.getRequester() + "_" + status.getRequestedAt();
+        if (pendingKey.equals(lastShownPendingKey)) return;
+        lastShownPendingKey = pendingKey;
 
         dismissActiveNotification();
 
         boolean isRequester = currentUsername.equals(status.getRequester());
+        String project = getProjectName(status);
 
         Platform.runLater(() -> {
+            activeNotification = new NotificationController();
+
             if (isRequester) {
-                // This uses your existing method which auto-closes after 2.5s
-                currentPendingNotification = showRequesterNotification(status);
+                String title = isOverride
+                        ? "🔄 Restart Override Sent"
+                        : "🔄 Restart Request Sent";
+                String message = isOverride
+                        ? String.format("New restart request for: %s\nPrevious request replaced.\nAuto-approve in: %ss",
+                        project, status.getTimeRemaining())
+                        : String.format("Pending approval for: %s\nAuto-approve in: %ss",
+                        project, status.getTimeRemaining());
+
+                activeNotification.showSimpleNotification(title, message);
             } else {
-                currentPendingNotification = showRejectNotification(status);
+                String requester = status.getRequester();
+                String message = isOverride
+                        ? String.format("%s overrode the previous restart - %s!\nNew 30s approval window started.",
+                        requester, project)
+                        : String.format("%s wants to restart the server - %s!",
+                        requester, project);
+
+                activeNotification.showRestartServerNotification(
+                        message,
+                        () -> executeReject(status));
+
+                String logMsg = isOverride
+                        ? "⚠️ " + requester + " overrode restart for " + project + " - You can reject!"
+                        : "⚠️ Restart request for " + project + " from " + requester + " - You can reject it!";
+                logger.accept(logMsg);
             }
         });
     }
 
-    private NotificationController showRequesterNotification(RestartStatus status) {
-        activeNotification = new NotificationController();
-
-        String title = "🔄 Restart Request Sent";
-
-        String projectName = getProjectDisplayName(status);
-        String message = String.format("Pending approval for: %s\nAuto-approve in: %ss", projectName, status.getTimeRemaining());
-
-        activeNotification.showSimpleNotification(title, message);
-
-        return activeNotification;
-    }
-
     /**
-     * Notificare cu buton REJECT pentru ceilalți utilizatori
+     * Gestionează statusul "rejected".
+     * Nu afișează notificare celui care a dat reject (el deja știe).
+     * Requester-ul primește notificare că i-a fost respinsă cererea.
      */
-    private NotificationController showRejectNotification(RestartStatus status) {
-        activeNotification = new NotificationController();
+    private void handleRejected(RestartStatus status) {
+        resetPendingState();
 
-        String requester = status.getRequester();
-        String projectName = getProjectDisplayName(status);
-        String message = String.format("%s wants to restart the server - %s!", requester, projectName);
-
-        // Folosește notificare cu buton de acțiune
-        activeNotification.showRestartServerNotification(
-                message,
-                () -> handleRejectAction(status)
-        );
-
-        logger.accept("⚠️ Restart request for " + projectName + " from " + requester + " - You can reject it!");
-
-        return activeNotification; // ✅ Returnează referința
-    }
-
-    // Helper to safely get project name
-    private String getProjectDisplayName(RestartStatus status) {
-        String project = status.getProject();
-        if (project == null || project.trim().isEmpty() || "null".equals(project)) {
-            return "Unknown Project";
-        }
-        return project;
-    }
-
-    /**
-     * Handler pentru acțiunea de reject
-     */
-    private void handleRejectAction(RestartStatus status) {
-        try {
-            restartManager.rejectRestart();
-            logger.accept("🚫 You rejected the restart request from " + status.getRequester());
-
-        } catch (Exception ex) {
-            logger.accept("✗ Failed to reject restart: " + ex.getMessage());
-            Platform.runLater(() -> {
-                CustomAlert.showError("Reject Failed", ex.getMessage());
-            });
-        }
-    }
-
-
-    /**
-     * Stop timer thread
-     */
-    private void stopTimerThread() {
-        if (timerThread != null && timerThread.isAlive()) {
-            timerThread.interrupt();
-            timerThread = null;
-        }
-    }
-
-    private void handleRejectedNotification(RestartStatus status) {
-        lastShownPendingRequest = null; // ✅ Resetează
-        currentPendingNotification = null; // ✅ Resetează
-        // dismissActiveNotification() called in main switch
-
-        // ✅ VERIFICARE rejections list
-        if (status.getRejections() == null || status.getRejections().isEmpty()) {
-            logger.accept("⚠ Warning: Rejected status has no rejections");
-            return;
-        }
+        if (status.getRejections() == null || status.getRejections().isEmpty()) return;
 
         RestartStatus.Rejection lastRejection = status.getRejections()
                 .get(status.getRejections().size() - 1);
+        if (lastRejection.getUser() == null) return;
 
-        // ✅ VERIFICARE rejection user
-        if (lastRejection.getUser() == null) {
-            logger.accept("⚠ Warning: Rejection has null user");
-            return;
-        }
+        String rejector = lastRejection.getUser();
+        String project = getProjectName(status);
+        boolean isRequester = currentUsername.equals(status.getRequester());
 
-        String rejectorName = lastRejection.getUser();
-        boolean isRequester = status.getRequester() != null &&
-                currentUsername.equals(status.getRequester());
-
-        String projectName = getProjectDisplayName(status);
+        if (currentUsername.equals(rejector)) return;
 
         Platform.runLater(() -> {
-            // Create NEW instance
             activeNotification = new NotificationController();
 
             if (isRequester) {
-                // Notificare IMPORTANTĂ pentru requester
                 activeNotification.showSimpleNotification(
                         "🚫 Restart Rejected",
-                        "Your restart request on " + projectName + " was rejected by " + rejectorName
-                );
-                logger.accept("🚫 Restart request rejected by " + rejectorName);
-
-            } else if (!currentUsername.equals(rejectorName)) {
-                // Notificare simplă pentru ceilalți (nu pentru cel care a dat reject)
-                String requesterName = status.getRequester() != null ? status.getRequester() : "unknown";
+                        "Your restart request on " + project + " was rejected by " + rejector);
+                logger.accept("🚫 Restart request rejected by " + rejector);
+            } else {
+                String requester = status.getRequester() != null ? status.getRequester() : "unknown";
                 activeNotification.showSimpleNotification(
                         "🚫 Restart Rejected",
-                        rejectorName + " declined the " + projectName + " server restart initiated by " + requesterName
-                );
-                logger.accept("🚫 " + rejectorName + " rejected restart from " + requesterName);
+                        rejector + " declined the " + project
+                                + " server restart initiated by " + requester);
+                logger.accept("🚫 " + rejector + " rejected restart from " + requester);
             }
         });
     }
 
-    private void handleExecutingNotification(RestartStatus status) {
-        lastShownPendingRequest = null; // ✅ Resetează
-        currentPendingNotification = null; // ✅ Resetează
-        // dismissActiveNotification() called in main switch
+    /**
+     * Gestionează statusul "executing".
+     * Notifică doar pentru restart-uri NOI — ignoră poll-urile repetate
+     * cu același requester + requestedAt (deduplicat în handleStatusChange).
+     */
+    private void handleExecuting(RestartStatus status) {
+        resetPendingState();
 
-        String requesterName = status.getRequester() != null ? status.getRequester() : "unknown";
-        String projectName = getProjectDisplayName(status);
+        String requester = status.getRequester() != null ? status.getRequester() : "unknown";
+        String project = getProjectName(status);
 
         Platform.runLater(() -> {
-            // ✅ FIX: Atribuim instanța creată variabilei activeNotification
             activeNotification = new NotificationController();
             activeNotification.showSimpleNotification(
                     "🔄 The Server is Restarting",
-                    "Target: " + projectName + " - initiated by: " + requesterName
-            );
+                    "Target: " + project + " - initiated by: " + requester);
         });
-
-        logger.accept("🔄 " + projectName + " is restarting - initiated by " + requesterName);
+        logger.accept("🔄 " + project + " is restarting - initiated by " + requester);
     }
 
-    /**
-     * ✅ METODA NOUĂ: Notificare de succes
-     */
-    private void handleCompletedNotification(RestartStatus status) {
-        lastShownPendingRequest = null;
-        currentPendingNotification = null;
-        // dismissActiveNotification() called in main switch
+    private void handleCompleted(RestartStatus status) {
+        resetPendingState();
 
-        String requesterName = status.getRequester() != null ? status.getRequester() : "unknown";
-        String projectName = getProjectDisplayName(status);
+        String requester = status.getRequester() != null ? status.getRequester() : "unknown";
+        String project = getProjectName(status);
 
         Platform.runLater(() -> {
             activeNotification = new NotificationController();
             activeNotification.showSimpleNotification(
                     "✅ Restart Completed",
-                    "The restart finished successfully.\nGood job, " + requesterName + "!"
-            );
+                    "The restart finished successfully.\nGood job, " + requester + "!");
         });
 
-        logger.accept("✅ " + projectName + " restart completed successfully - initiated by " + requesterName);
+        logger.accept("✅ " + project + " restart completed successfully - initiated by " + requester);
     }
 
+    /**
+     * Detectează dacă noul status e un override (request nou peste unul existent).
+     * Override = statusul anterior era pending sau executing, iar cel nou e pending
+     * cu un timestamp diferit (deci e o cerere complet nouă, nu aceeași).
+     */
+    private boolean detectOverride(RestartStatus status) {
+        if (!status.isPending()) return false;
+        if (previousStatus == null) return false;
+
+        return "pending".equals(previousStatus) || "executing".equals(previousStatus);
+    }
+
+    private void executeReject(RestartStatus status) {
+        try {
+            restartManager.rejectRestart();
+            logger.accept("🚫 You rejected the restart request from " + status.getRequester());
+        } catch (Exception ex) {
+            LOGGER.log(Level.WARNING, "Failed to reject restart", ex);
+            logger.accept("✗ Failed to reject restart: " + ex.getMessage());
+            Platform.runLater(() -> CustomAlert.showError("Reject Failed", ex.getMessage()));
+        }
+    }
+
+    /**
+     * Debounce: ignoră statusuri identice (aceeași cheie) primite în interval
+     * mai mic de {DEBOUNCE_MS}ms. Previne notificări duplicate când polling-ul
+     * returnează același status de mai multe ori în succesiune rapidă.
+     */
+    private boolean isDuplicate(RestartStatus status) {
+        String key = status.getStatus() + "_" + status.getLastUpdate() + "_" + status.getRequester();
+        long now = System.currentTimeMillis();
+
+        if (key.equals(lastStatusKey) && (now - lastStatusTime) < DEBOUNCE_MS) {
+            return true;
+        }
+
+        lastStatusKey = key;
+        lastStatusTime = now;
+        return false;
+    }
+
+    private void resetPendingState() {
+        lastShownPendingKey = null;
+    }
+
+    /**
+     * Închide notificarea activă pe JavaFX thread.
+     * Maxim o notificare e vizibilă la un moment dat — cea nouă o înlocuiește pe cea veche.
+     */
     private void dismissActiveNotification() {
-        stopTimerThread();
+        NotificationController toClose = activeNotification;
+        activeNotification = null;
 
-        // Capture reference to avoid race conditions
-        NotificationController notificationToClose = activeNotification;
-
-        if (notificationToClose != null) {
+        if (toClose != null) {
             Platform.runLater(() -> {
-                try {
-                    notificationToClose.close();
-                } catch (Exception e) {
-                    // Ignore
-                }
+                try { toClose.close(); }
+                catch (Exception ignored) {}
             });
         }
-
-        activeNotification = null;
-        currentPendingNotification = null;
     }
 
-    private void logStatusChange(RestartStatus status) {
-        String time = TIME_FORMATTER.format(Instant.ofEpochSecond(status.getLastUpdate()));
-
-        logger.accept("--------------------------------------");
-        logger.accept("📊 Restart Status Update [" + time + "]");
-        logger.accept("   Status: " + status.getStatus().toUpperCase());
-
-        // Log project name
-        logger.accept("   Project: " + getProjectDisplayName(status));
-
-        if (status.getRequester() != null) {
-            logger.accept("   Requester: " + status.getRequester());
-        }
-
-        if (status.isPending()) {
-            logger.accept("   Time remaining: " + status.getTimeRemaining() + "s");
-        }
-
-        if (status.getRejections() != null && !status.getRejections().isEmpty()) {
-            logger.accept("   Rejections: " + status.getRejections().size());
-            for (RestartStatus.Rejection rejection : status.getRejections()) {
-                if (rejection.getUser() != null) {
-                    logger.accept("      - " + rejection.getUser());
-                }
-            }
-        }
-
-        logger.accept("--------------------------------------");
-    }
-
-    public void shutdown() {
-        dismissActiveNotification();
+    private String getProjectName(RestartStatus status) {
+        String project = status.getProject();
+        return (project == null || project.trim().isEmpty() || "null".equals(project))
+                ? "Unknown Project" : project;
     }
 }

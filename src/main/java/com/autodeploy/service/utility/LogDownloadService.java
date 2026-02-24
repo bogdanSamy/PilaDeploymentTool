@@ -1,13 +1,11 @@
 package com.autodeploy.service.utility;
 
 import com.autodeploy.core.config.ApplicationConfig;
-import com.autodeploy.infrastructure.sftp.SftpManager;
+import com.autodeploy.infrastructure.connection.ConnectionManager;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 
-import java.awt.*;
 import java.io.File;
-import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.function.Consumer;
@@ -15,7 +13,12 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Service for downloading log files from remote server
+ * Descarcă fișiere de log de pe server prin SFTP.
+ * <p>
+ * Fișierul descărcat primește un suffix de timestamp în nume pentru a evita
+ * suprascrierea descărcărilor anterioare (ex: "server.log" → "server_20260223_143012.log").
+ * <p>
+ * Fluxul: validare config → verificare conexiune → download SFTP → returnare {@link DownloadResult}.
  */
 public class LogDownloadService {
 
@@ -23,67 +26,43 @@ public class LogDownloadService {
     private static final DateTimeFormatter TIMESTAMP_FORMAT =
             DateTimeFormatter.ofPattern("yyyyMMdd_HHmmss");
 
-    private final SftpManager sftpManager;
+    private final ConnectionManager connectionManager;
     private final Consumer<String> logger;
     private final ApplicationConfig appConfig;
 
-    public LogDownloadService(SftpManager sftpManager, Consumer<String> logger) {
-        this.sftpManager = sftpManager;
+    public LogDownloadService(ConnectionManager connectionManager, Consumer<String> logger) {
+        this.connectionManager = connectionManager;
         this.logger = logger;
         this.appConfig = ApplicationConfig.getInstance();
     }
 
     /**
-     * Download result
-     */
-    public static class DownloadResult {
-        private final boolean success;
-        private final File downloadedFile;
-        private final String errorMessage;
-
-        public DownloadResult(boolean success, File downloadedFile, String errorMessage) {
-            this.success = success;
-            this.downloadedFile = downloadedFile;
-            this.errorMessage = errorMessage;
-        }
-
-        public boolean isSuccess() { return success; }
-        public File getDownloadedFile() { return downloadedFile; }
-        public String getErrorMessage() { return errorMessage; }
-    }
-
-    /**
-     * Validate download configuration
+     * Validează configurația necesară pentru download:
+     * calea remotă a log-ului și directorul local de descărcare.
+     * Creează directorul local dacă nu există.
      */
     public DownloadResult validateConfiguration() {
         String remoteLogPath = appConfig.getRemoteLogPath();
         if (remoteLogPath == null || remoteLogPath.isEmpty()) {
-            return new DownloadResult(false, null,
+            return DownloadResult.failure(
                     "Remote log path is not configured in app-config.properties");
         }
 
         String localDownloadDir = appConfig.getLocalDownloadDir();
         if (localDownloadDir == null || localDownloadDir.isEmpty()) {
-            return new DownloadResult(false, null,
+            return DownloadResult.failure(
                     "Local download directory is not configured in app-config.properties");
         }
 
-        // Create local download directory if needed
         File localDir = new File(localDownloadDir);
-        if (!localDir.exists()) {
-            if (!localDir.mkdirs()) {
-                return new DownloadResult(false, null,
-                        "Failed to create local download directory: " + localDownloadDir);
-            }
-            log("✓ Created local download directory: " + localDownloadDir);
+        if (!localDir.exists() && !localDir.mkdirs()) {
+            return DownloadResult.failure(
+                    "Failed to create local download directory: " + localDownloadDir);
         }
 
-        return new DownloadResult(true, null, null);
+        return DownloadResult.success(null);
     }
 
-    /**
-     * Download log file asynchronously
-     */
     public Task<DownloadResult> downloadAsync() {
         return new Task<>() {
             @Override
@@ -93,17 +72,18 @@ public class LogDownloadService {
         };
     }
 
-    /**
-     * Download log file synchronously
-     */
     public DownloadResult downloadLogFile() {
         log("📥 Starting log download...");
 
-        // Validate configuration
         DownloadResult validation = validateConfiguration();
         if (!validation.isSuccess()) {
             log("✗ " + validation.getErrorMessage());
             return validation;
+        }
+
+        if (!connectionManager.isConnected()) {
+            log("✗ Not connected to server");
+            return DownloadResult.failure("Not connected to server. Please reconnect and try again.");
         }
 
         String remoteLogPath = appConfig.getRemoteLogPath();
@@ -113,121 +93,50 @@ public class LogDownloadService {
         log("✓ Local download directory: " + localDownloadDir);
 
         try {
-            // Get log file name
-            String logFileName = remoteLogPath.substring(remoteLogPath.lastIndexOf('/') + 1);
+            String localFilePath = buildLocalFilePath(remoteLogPath, localDownloadDir);
 
-            // Build local file path with timestamp
-            String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
-            String localFileName = logFileName.replace(".", "_" + timestamp + ".");
-            String localFilePath = localDownloadDir + File.separator + localFileName;
-
-            log("─────────────────────────────────────");
-            log("▶ Downloading: " + logFileName);
+            log("=====================================");
+            log("▶ Downloading: " + extractFileName(remoteLogPath));
             log("▶ From: " + remoteLogPath);
             log("▶ To: " + localFilePath);
-            log("─────────────────────────────────────");
+            log("=====================================");
 
-            // Download file
-            sftpManager.downloadFile(remoteLogPath, localFilePath);
+            connectionManager.getSftpManager().downloadFile(remoteLogPath, localFilePath);
 
             File downloadedFile = new File(localFilePath);
-            String fileSize = formatFileSize(downloadedFile.length());
 
-            log("─────────────────────────────────────");
+            log("=====================================");
             log("✓ Download completed successfully");
-            log("✓ File size: " + fileSize);
+            log("✓ File size: " + FileSizeFormatter.format(downloadedFile.length()));
             log("✓ Saved to: " + localFilePath);
-            log("─────────────────────────────────────");
+            log("=====================================");
 
-            return new DownloadResult(true, downloadedFile, null);
+            return DownloadResult.success(downloadedFile);
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Download error", e);
             log("✗ Download error: " + e.getMessage());
-            return new DownloadResult(false, null, e.getMessage());
+            return DownloadResult.failure(e.getMessage());
         }
     }
 
     /**
-     * Open file with system's "Open With" dialog
+     * Construiește calea locală cu timestamp unic.
+     * "server.log" + "20260223_143012" → "server_20260223_143012.log"
+     * Astfel fiecare descărcare e un fișier nou, fără pierdere de date.
      */
-    public boolean openWithDialog(File file) {
-        if (file == null || !file.exists()) {
-            log("✗ File does not exist: " + file);
-            return false;
-        }
-
-        try {
-            String os = System.getProperty("os.name").toLowerCase();
-
-            if (os.contains("win")) {
-                // Windows
-                ProcessBuilder pb = new ProcessBuilder(
-                        "rundll32.exe",
-                        "shell32.dll,OpenAs_RunDLL",
-                        file.getAbsolutePath()
-                );
-                pb.start();
-                log("✓ 'Open With' dialog opened for: " + file.getName());
-                return true;
-
-            } else if (os.contains("mac")) {
-                // macOS
-                ProcessBuilder pb = new ProcessBuilder("open", "-a", "Finder", file.getAbsolutePath());
-                pb.start();
-                return true;
-
-            } else if (os.contains("nix") || os.contains("nux")) {
-                // Linux
-                ProcessBuilder pb = new ProcessBuilder("xdg-open", file.getAbsolutePath());
-                pb.start();
-                return true;
-            }
-
-            return false;
-
-        } catch (IOException e) {
-            LOGGER.log(Level.WARNING, "Failed to open 'Open With' dialog", e);
-            log("✗ Failed to open 'Open With' dialog: " + e.getMessage());
-            return false;
-        }
+    private String buildLocalFilePath(String remoteLogPath, String localDownloadDir) {
+        String logFileName = extractFileName(remoteLogPath);
+        String timestamp = LocalDateTime.now().format(TIMESTAMP_FORMAT);
+        String localFileName = logFileName.replace(".", "_" + timestamp + ".");
+        return localDownloadDir + File.separator + localFileName;
     }
 
-    /**
-     * Open file's containing folder
-     */
-    public boolean openContainingFolder(File file) {
-        if (file == null || !file.exists()) {
-            return false;
-        }
-
-        try {
-            Desktop.getDesktop().open(file.getParentFile());
-            log("✓ Opened containing folder");
-            return true;
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Failed to open containing folder", e);
-            log("✗ Failed to open folder: " + e.getMessage());
-            return false;
-        }
+    /** Extrage numele fișierului din calea remotă (ultimul segment după '/'). */
+    private String extractFileName(String path) {
+        return path.substring(path.lastIndexOf('/') + 1);
     }
 
-    /**
-     * Format file size for display
-     */
-    private String formatFileSize(long bytes) {
-        if (bytes < 1024) {
-            return bytes + " B";
-        } else if (bytes < 1024 * 1024) {
-            return String.format("%.2f KB", bytes / 1024.0);
-        } else {
-            return String.format("%.2f MB", bytes / (1024.0 * 1024.0));
-        }
-    }
-
-    /**
-     * Log message
-     */
     private void log(String message) {
         Platform.runLater(() -> logger.accept(message));
     }

@@ -1,133 +1,91 @@
 package com.autodeploy.domain.manager;
 
+import com.autodeploy.domain.model.RestartStatus;
 import com.autodeploy.domain.model.Server;
-import com.autodeploy.infrastructure.sftp.SftpManager;
-import com.google.gson.Gson;
-import com.google.gson.annotations.SerializedName;
+import com.autodeploy.infrastructure.connection.ConnectionManager;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.application.Platform;
-import java.util.ArrayList;
+
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+/**
+ * Gestionează comunicarea cu scriptul de restart de pe server.
+ * <p>
+ * Funcționalitate:
+ * <ul>
+ *   <li>Execută comenzi remote (request, reject, get status)</li>
+ *   <li>Polling periodic cu circuit-breaker (se oprește după N erori consecutive)</li>
+ *   <li>Notifică listener-ii pe JavaFX Application Thread la schimbări de status</li>
+ * </ul>
+ */
 public class RestartManager {
+
+    private static final Logger LOGGER = Logger.getLogger(RestartManager.class.getName());
+
+    private static final ObjectMapper MAPPER = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+
+    /**
+     * Delay între scrierea fișierului de status pe server și citirea lui.
+     * Necesar deoarece scriptul bash scrie asincron pe filesystem.
+     */
+    private static final int STATUS_FETCH_DELAY_MS = 200;
+
+    /**
+     * Numărul maxim de erori consecutive de polling înainte de oprire automată.
+     * Previne logging infinit pe o conexiune moartă.
+     */
+    private static final int MAX_CONSECUTIVE_ERRORS = 5;
+
     private final Server server;
-    private final SftpManager sftpManager;
+    private final ConnectionManager connectionManager;
     private final String currentUsername;
-    private final Gson gson = new Gson();
 
     private RestartStatus lastStatus;
     private Thread pollingThread;
     private volatile boolean polling = false;
     private final List<Consumer<RestartStatus>> listeners = new CopyOnWriteArrayList<>();
 
-    public RestartManager(Server server, SftpManager sftpManager, String currentUsername) {
+    public RestartManager(Server server, ConnectionManager connectionManager, String currentUsername) {
         this.server = server;
-        this.sftpManager = sftpManager;
+        this.connectionManager = connectionManager;
         this.currentUsername = currentUsername;
     }
 
-    private String executeCommand(String command) throws Exception {
-        return sftpManager.executeCommand(command);
-    }
-
     public RestartStatus getStatus() throws Exception {
-        String command = server.getRestartManagerScript() + " " + currentUsername + " get";
-
+        String command = buildCommand("get");
         String output = executeCommand(command);
-
-        if (output == null || output.trim().isEmpty()) {
-            return null;
-        }
-
-        output = output.trim();
-
-        if (output.startsWith("ERROR:")) {
-            System.err.println("ERROR from script: " + output);
-            return null;
-        }
-
-        if (!output.startsWith("{")) {
-            return null;
-        }
-
-        try {
-            return gson.fromJson(output, RestartStatus.class);
-        } catch (Exception e) {
-            System.err.println("ERROR: Failed to parse JSON: " + e.getMessage());
-            return null;
-        }
+        return parseStatusResponse(output);
     }
 
     public RestartStatus requestRestart(String projectName) throws Exception {
-        // Sanitize project name to prevent shell injection issues (basic quote handling)
-        String safeProjectName = (projectName != null) ? projectName.replace("\"", "\\\"") : "";
-
-        // Construct command: ./script.sh username request "My Project"
+        String safeProjectName = sanitize(projectName);
         String command = String.format("%s %s request \"%s\"",
-                server.getRestartManagerScript(),
-                currentUsername,
-                safeProjectName);
+                server.getRestartManagerScript(), currentUsername, safeProjectName);
 
-        System.out.println("---------------------------------------");
-        System.out.println("DEBUG: Executing request command");
-        System.out.println("Command: " + command);
-
+        LOGGER.info("Executing restart request command");
         String output = executeCommand(command);
 
-        System.out.println("Raw request output: [" + output + "]");
-
-        // Handle empty response (fire-and-forget might return empty if successful)
-        if (output == null || output.trim().isEmpty()) {
-            // If empty, we assume it started. Fetch status to confirm.
-            System.out.println("Info: Empty response, fetching status manually...");
-            Thread.sleep(200); // Allow file system to update
-            return getStatus();
-        }
-
-        output = output.trim();
-
-        if (output.startsWith("ERROR:")) {
-            throw new RuntimeException(output.replace("ERROR:", ""));
-        }
-
-        // The new script usually returns "OK:..." string.
-        // If so, we just fetch the status JSON manually.
-        if (output.startsWith("OK:")) {
-            System.out.println("✓ " + output);
-            Thread.sleep(200);
-            return getStatus();
-        }
-
-        // If it returns JSON directly
-        if (output.startsWith("{")) {
-            try {
-                return gson.fromJson(output, RestartStatus.class);
-            } catch (Exception e) {
-                // Fallback
-                return getStatus();
-            }
-        }
-
-        // Default fallback
-        return getStatus();
+        return handleCommandResponse(output);
     }
 
-    /**
-     * Reject pending restart
-     */
     public RestartStatus rejectRestart() throws Exception {
-        String command = server.getRestartManagerScript() + " " + currentUsername + " reject";
+        String command = buildCommand("reject");
 
-        System.out.println("DEBUG: Executing reject command: " + command);
+        LOGGER.info("Executing reject command");
         String output = executeCommand(command);
 
         if (output != null && output.startsWith("ERROR:")) {
-            throw new RuntimeException(output.replace("ERROR:", ""));
+            throw new RuntimeException(output.replace("ERROR:", "").trim());
         }
 
-        System.out.println("✓ Reject executed. Refreshing status...");
-        Thread.sleep(200);
+        LOGGER.info("Reject executed, refreshing status...");
+        Thread.sleep(STATUS_FETCH_DELAY_MS);
         return getStatus();
     }
 
@@ -135,29 +93,7 @@ public class RestartManager {
         if (polling) return;
 
         polling = true;
-        pollingThread = new Thread(() -> {
-            while (polling) {
-                try {
-                    RestartStatus newStatus = getStatus();
-
-                    if (newStatus != null) {
-                        // Notify if status changed or first run
-                        if (lastStatus == null || (newStatus.getVersion() != lastStatus.getVersion())) {
-                            final RestartStatus statusToNotify = newStatus;
-                            Platform.runLater(() -> notifyListeners(statusToNotify));
-                            lastStatus = newStatus;
-                        }
-                    }
-                    Thread.sleep(intervalMs);
-
-                } catch (InterruptedException e) {
-                    break;
-                } catch (Exception e) {
-                    try { Thread.sleep(intervalMs); } catch (InterruptedException ie) { break; }
-                }
-            }
-        }, "RestartManager-Polling");
-
+        pollingThread = new Thread(() -> pollLoop(intervalMs), "RestartManager-Polling");
         pollingThread.setDaemon(true);
         pollingThread.start();
     }
@@ -167,6 +103,52 @@ public class RestartManager {
         if (pollingThread != null) {
             pollingThread.interrupt();
             pollingThread = null;
+        }
+    }
+
+    /**
+     * Polling loop cu circuit-breaker: se oprește automat după
+     * {@link #MAX_CONSECUTIVE_ERRORS} erori consecutive.
+     * Notifică listener-ii doar la schimbări efective de status.
+     */
+    private void pollLoop(int intervalMs) {
+        int consecutiveErrors = 0;
+
+        while (polling) {
+            try {
+                RestartStatus newStatus = getStatus();
+
+                if (newStatus != null && newStatus.hasChangedFrom(lastStatus)) {
+                    final RestartStatus statusToNotify = newStatus;
+                    Platform.runLater(() -> notifyListeners(statusToNotify));
+                    lastStatus = newStatus;
+                }
+
+                consecutiveErrors = 0;
+                Thread.sleep(intervalMs);
+
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                consecutiveErrors++;
+
+                if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
+                    LOGGER.warning("Polling stopped after " + consecutiveErrors
+                            + " consecutive errors. Last: " + e.getMessage());
+                    break;
+                }
+
+                LOGGER.log(Level.FINE, "Polling error (" + consecutiveErrors
+                        + "/" + MAX_CONSECUTIVE_ERRORS + ")", e);
+
+                try {
+                    Thread.sleep(intervalMs);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
         }
     }
 
@@ -180,63 +162,90 @@ public class RestartManager {
 
     private void notifyListeners(RestartStatus status) {
         for (Consumer<RestartStatus> listener : listeners) {
-            try { listener.accept(status); } catch (Exception e) { e.printStackTrace(); }
+            try {
+                listener.accept(status);
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Error in restart status listener", e);
+            }
         }
     }
 
-    public static class RestartStatus {
-        private long version;
+    private String executeCommand(String command) throws Exception {
+        return connectionManager.getSftpManager().executeCommand(command);
+    }
 
-        @SerializedName("in_progress")
-        private boolean inProgress;
+    private String buildCommand(String action) {
+        return server.getRestartManagerScript() + " " + currentUsername + " " + action;
+    }
 
-        private String requester;
-
-        private String project;
-
-        @SerializedName("requested_at")
-        private Long requestedAt;
-
-        @SerializedName("wait_until")
-        private Long waitUntil;
-
-        private String status;
-
-        private List<Rejection> rejections = new ArrayList<>();
-
-        @SerializedName("last_update")
-        private long lastUpdate;
-
-        // Getters
-        public long getVersion() { return version; }
-        public boolean isInProgress() { return inProgress; }
-        public String getRequester() { return requester; }
-        public String getProject() { return project; } // New Getter
-        public Long getRequestedAt() { return requestedAt; }
-        public Long getWaitUntil() { return waitUntil; }
-        public String getStatus() { return status; }
-        public List<Rejection> getRejections() { return rejections; }
-
-        public long getLastUpdate() { return lastUpdate; }
-
-        // Helpers
-        public int getTimeRemaining() {
-            if (waitUntil == null) return 0;
-            return (int) Math.max(0, waitUntil - (System.currentTimeMillis() / 1000));
+    private RestartStatus parseStatusResponse(String output) {
+        if (output == null || output.trim().isEmpty()) {
+            return null;
         }
 
-        public boolean isIdle() { return "idle".equalsIgnoreCase(status); }
-        public boolean isPending() { return "pending".equalsIgnoreCase(status); }
-        public boolean isApproved() { return "approved".equalsIgnoreCase(status); }
-        public boolean isRejected() { return "rejected".equalsIgnoreCase(status); }
-        public boolean isExecuting() { return "executing".equalsIgnoreCase(status); }
-        public boolean isCompleted() {return "completed".equalsIgnoreCase(status); }
+        String trimmed = output.trim();
 
-        public static class Rejection {
-            private String user;
-            private long timestamp;
-            public String getUser() { return user; }
-            public long getTimestamp() { return timestamp; }
+        if (trimmed.startsWith("ERROR:")) {
+            LOGGER.warning("Error from restart script: " + trimmed);
+            return null;
         }
+
+        if (!trimmed.startsWith("{")) {
+            LOGGER.fine("Non-JSON response from restart script: " + trimmed);
+            return null;
+        }
+
+        try {
+            return MAPPER.readValue(trimmed, RestartStatus.class);
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to parse restart status JSON", e);
+            return null;
+        }
+    }
+
+    /**
+     * Procesează răspunsul de la comenzile request/reject.
+     * Protocolul cu scriptul bash:
+     * <ul>
+     *   <li>"ERROR: ..." → excepție</li>
+     *   <li>"OK: ..." → comandă acceptată, fetch status actualizat</li>
+     *   <li>JSON → parsare directă</li>
+     *   <li>Altceva / gol → fallback pe getStatus()</li>
+     * </ul>
+     */
+    private RestartStatus handleCommandResponse(String output) throws Exception {
+        if (output == null || output.trim().isEmpty()) {
+            LOGGER.info("Empty response from request, fetching status...");
+            Thread.sleep(STATUS_FETCH_DELAY_MS);
+            return getStatus();
+        }
+
+        String trimmed = output.trim();
+
+        if (trimmed.startsWith("ERROR:")) {
+            throw new RuntimeException(trimmed.replace("ERROR:", "").trim());
+        }
+
+        if (trimmed.startsWith("OK:")) {
+            LOGGER.info("Request acknowledged: " + trimmed);
+            Thread.sleep(STATUS_FETCH_DELAY_MS);
+            return getStatus();
+        }
+
+        if (trimmed.startsWith("{")) {
+            RestartStatus parsed = parseStatusResponse(trimmed);
+            return parsed != null ? parsed : getStatus();
+        }
+
+        return getStatus();
+    }
+
+    /**
+     * Sanitizează input-ul pentru a fi safe ca argument shell.
+     * Permite doar caractere alfanumerice, spații, cratime, underscore și punct.
+     */
+    private String sanitize(String input) {
+        if (input == null) return "";
+        return input.replaceAll("[^a-zA-Z0-9 _\\-.]", "");
     }
 }

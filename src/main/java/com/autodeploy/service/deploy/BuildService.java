@@ -2,6 +2,7 @@ package com.autodeploy.service.deploy;
 
 import com.autodeploy.core.config.ApplicationConfig;
 import com.autodeploy.domain.model.Project;
+import com.autodeploy.service.utility.OsHelper;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 
@@ -12,13 +13,32 @@ import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Execută build-ul Ant al unui proiect.
+ * <p>
+ * Fluxul:
+ * <ol>
+ *   <li>Validare configurație (cale Ant, build file, target)</li>
+ *   <li>Pregătire comandă — înlocuiește "ant" cu calea absolută din config</li>
+ *   <li>Generare script temporar (.bat pe Windows, .sh pe Linux/Mac)</li>
+ *   <li>Execuție cu timeout de {@value BUILD_TIMEOUT_MINUTES} minute</li>
+ *   <li>Streaming output-ului live către logger (vizibil în UI)</li>
+ *   <li>Cleanup script temporar</li>
+ * </ol>
+ * <p>
+ * De ce script temporar și nu execuție directă? Comenzile Ant pot fi multi-linie
+ * (cu variabile de mediu, multiple targets, etc.), iar un script temporar
+ * permite executarea lor ca un bloc unitar de către shell.
+ */
 public class BuildService {
 
     private static final Logger LOGGER = Logger.getLogger(BuildService.class.getName());
+    private static final long BUILD_TIMEOUT_MINUTES = 10;
 
     private final Project project;
     private final Consumer<String> logger;
@@ -30,68 +50,28 @@ public class BuildService {
         this.appConfig = ApplicationConfig.getInstance();
     }
 
-    public static class BuildResult {
-        private final boolean success;
-        private final int exitCode;
-        private final String errorMessage;
-
-        public BuildResult(boolean success, int exitCode, String errorMessage) {
-            this.success = success;
-            this.exitCode = exitCode;
-            this.errorMessage = errorMessage;
-        }
-
-        public boolean isSuccess() { return success; }
-        public int getExitCode() { return exitCode; }
-        public String getErrorMessage() { return errorMessage; }
-    }
-
     /**
-     * Validate build configuration
+     * Validează configurația de build în lanț (fail-fast).
+     * Folosește Optional chaining — prima validare eșuată oprește lanțul
+     * și returnează BuildResult.failure cu mesajul corespunzător.
+     *
+     * @return BuildResult.success dacă totul e valid, failure cu mesaj descriptiv altfel
      */
     public BuildResult validateConfiguration() {
-        // Check build file path
-        if (project.getBuildFilePath() == null || project.getBuildFilePath().isEmpty()) {
-            return new BuildResult(false, -1,
-                    "Build file path is not configured for project: " + project.getName());
-        }
-
-        // Check if build file exists
-        File buildFile = new File(project.getBuildFilePath());
-        if (!buildFile.exists()) {
-            return new BuildResult(false, -1,
-                    "Build file does not exist: " + project.getBuildFilePath());
-        }
-
-        // Check Ant target
-        if (project.getAntTarget() == null || project.getAntTarget().isEmpty()) {
-            return new BuildResult(false, -1,
-                    "Ant target is not configured for project: " + project.getName());
-        }
-
-        // Check Ant command
-        if (project.getAntCommand() == null || project.getAntCommand().trim().isEmpty()) {
-            return new BuildResult(false, -1,
-                    "Ant command is not configured for project: " + project.getName());
-        }
-
-        // Check Ant path from config
-        String antPath = appConfig.getAntPath();
-        if (antPath == null || antPath.isEmpty()) {
-            return new BuildResult(false, -1,
-                    "Ant executable path is not configured in app-config.properties");
-        }
-
-        // Check if Ant executable exists
-        File antFile = new File(antPath);
-        if (!antFile.exists()) {
-            return new BuildResult(false, -1,
-                    "Ant executable does not exist: " + antPath);
-        }
-
-        return new BuildResult(true, 0, null);
+        return validateNotEmpty(project.getBuildFilePath(),
+                "Build file path is not configured for project: " + project.getName())
+                .or(() -> validateFileExists(project.getBuildFilePath(),
+                        "Build file does not exist: " + project.getBuildFilePath()))
+                .or(() -> validateNotEmpty(project.getAntTarget(),
+                        "Ant target is not configured for project: " + project.getName()))
+                .or(() -> validateNotEmpty(project.getAntCommand(),
+                        "Ant command is not configured for project: " + project.getName()))
+                .or(() -> validateNotEmpty(appConfig.getAntPath(),
+                        "Ant executable path is not configured in app-config.properties"))
+                .or(() -> validateFileExists(appConfig.getAntPath(),
+                        "Ant executable does not exist: " + appConfig.getAntPath()))
+                .orElse(BuildResult.success(0));
     }
-
 
     public Task<BuildResult> buildAsync() {
         return new Task<>() {
@@ -102,14 +82,10 @@ public class BuildService {
         };
     }
 
-    /**
-     * Build project synchronously
-     */
     public BuildResult buildProject() {
         log("🔨 Starting project build...");
         log("Project: " + project.getName());
 
-        // Validate configuration
         BuildResult validation = validateConfiguration();
         if (!validation.isSuccess()) {
             log("✗ " + validation.getErrorMessage());
@@ -118,138 +94,126 @@ public class BuildService {
 
         File buildFile = new File(project.getBuildFilePath());
         File workingDir = buildFile.getParentFile();
-        String antCommand = project.getAntCommand();
         String antPath = appConfig.getAntPath();
 
-        log("✓ Build file: " + project.getBuildFilePath());
-        log("✓ Ant target: " + project.getAntTarget());
-        log("✓ Ant path: " + antPath);
-        log("✓ Working directory: " + workingDir.getAbsolutePath());
+        logBuildInfo(workingDir, antPath);
 
-        // Prepare command - replace "ant" with full path
-        String finalCommand = prepareCommand(antCommand, antPath);
-
-        log("-------------------------------");
-        log("▶ Command to execute:");
-        for (String line : finalCommand.split("\\r?\\n")) {
-            log("  " + line);
-        }
-        log("-------------------------------");
+        String finalCommand = prepareCommand(project.getAntCommand(), antPath);
+        logCommand(finalCommand);
 
         File tempScript = null;
         try {
-            // Create temporary script file
             tempScript = createTempScript(finalCommand, workingDir);
             log("✓ Created temp script: " + tempScript.getName());
 
-            // Build command to execute the script
-            List<String> command = new ArrayList<>();
-            if (isWindows()) {
-                command.add("cmd.exe");
-                command.add("/c");
-                command.add(tempScript.getAbsolutePath());
-            } else {
-                command.add("/bin/bash");
-                command.add(tempScript.getAbsolutePath());
-            }
-
-            ProcessBuilder processBuilder = new ProcessBuilder(command);
-            processBuilder.directory(workingDir);
-            processBuilder.redirectErrorStream(true);
-            processBuilder.environment().putAll(System.getenv());
-
-            log("-------------------------------");
-
-            // Start process
-            Process process = processBuilder.start();
-
-            // Read output in real-time
-            try (BufferedReader reader = new BufferedReader(
-                    new InputStreamReader(process.getInputStream()))) {
-
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    final String outputLine = line;
-                    log(outputLine);
-                }
-            }
-
-            // Wait for completion
-            int exitCode = process.waitFor();
+            int exitCode = executeScript(tempScript, workingDir);
 
             log("-------------------------------");
             if (exitCode == 0) {
                 log("✓ Build completed successfully (exit code: " + exitCode + ")");
-                return new BuildResult(true, exitCode, null);
+                return BuildResult.success(exitCode);
             } else {
                 log("✗ Build failed with exit code: " + exitCode);
-                return new BuildResult(false, exitCode, "Build failed with exit code: " + exitCode);
+                return BuildResult.failure(exitCode, "Build failed with exit code: " + exitCode);
             }
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Build error", e);
             log("✗ Build error: " + e.getMessage());
-            return new BuildResult(false, -1, e.getMessage());
+            return BuildResult.failure(e.getMessage());
         } finally {
-            // Clean up temp script
-            if (tempScript != null && tempScript.exists()) {
-                try {
-                    Files.delete(tempScript.toPath());
-                    log("✓ Cleaned up temp script");
-                } catch (Exception e) {
-                    LOGGER.log(Level.WARNING, "Failed to delete temp script", e);
-                }
-            }
+            cleanupTempScript(tempScript);
             log("-------------------------------");
         }
     }
 
     /**
-     * Replaces "ant " with the full ant path from config
-     * Example: "ant -f build.xml" becomes "C:\apache-ant\bin\ant.bat -f build.xml"
+     * Execută scriptul temporar ca proces extern.
+     * Output-ul procesului e citit linie cu linie și trimis live către logger.
+     * Procesul e distrus forțat dacă depășește timeout-ul.
+     */
+    private int executeScript(File script, File workingDir) throws Exception {
+        List<String> command = new ArrayList<>();
+        if (OsHelper.isWindows()) {
+            command.add("cmd.exe");
+            command.add("/c");
+            command.add(script.getAbsolutePath());
+        } else {
+            command.add("/bin/bash");
+            command.add(script.getAbsolutePath());
+        }
+
+        ProcessBuilder processBuilder = new ProcessBuilder(command);
+        processBuilder.directory(workingDir);
+        processBuilder.redirectErrorStream(true);
+        processBuilder.environment().putAll(System.getenv());
+
+        log("-------------------------------");
+
+        Process process = processBuilder.start();
+
+        try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(process.getInputStream()))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                log(line);
+            }
+        }
+
+        boolean finished = process.waitFor(BUILD_TIMEOUT_MINUTES, TimeUnit.MINUTES);
+        if (!finished) {
+            process.destroyForcibly();
+            throw new RuntimeException("Build timed out after " + BUILD_TIMEOUT_MINUTES + " minutes");
+        }
+
+        return process.exitValue();
+    }
+
+    /**
+     * Înlocuiește "ant" de la începutul fiecărei linii cu calea completă către Ant.
+     * Suportă comenzi multi-linie — fiecare linie e procesată independent.
+     * <p>
+     * Exemplu: "ant -f build.xml compile" → "\"C:\apache-ant\bin\ant.bat\" -f build.xml compile"
+     * Calea e quoted dacă conține spații.
      */
     private String prepareCommand(String command, String antPath) {
+        String quotedAntPath = antPath.contains(" ") ? "\"" + antPath + "\"" : antPath;
+
         StringBuilder result = new StringBuilder();
-
         for (String line : command.split("\\r?\\n")) {
-            String trimmedLine = line.trim();
-
-            // Check if line starts with "ant " or is exactly "ant"
-            if (trimmedLine.equals("ant") || trimmedLine.startsWith("ant ")) {
-                // Replace "ant" with full path (quoted if contains spaces)
-                String quotedAntPath = antPath.contains(" ") ? "\"" + antPath + "\"" : antPath;
-                result.append(quotedAntPath).append(trimmedLine.substring(3)); // Remove "ant", keep rest
+            String trimmed = line.trim();
+            if (trimmed.equals("ant") || trimmed.startsWith("ant ")) {
+                result.append(quotedAntPath).append(trimmed.substring(3));
             } else {
                 result.append(line);
             }
             result.append("\n");
         }
-
         return result.toString().trim();
     }
 
     /**
-     * Creates a temporary script file with the ant command
+     * Creează un script temporar în directorul de build.
+     * Pe Windows: .bat cu @echo off. Pe Unix: .sh cu #!/bin/bash.
+     * Scriptul e creat în workingDir pentru a avea acces la fișierele relative.
      */
     private File createTempScript(String command, File workingDir) throws Exception {
-        String extension = isWindows() ? ".bat" : ".sh";
+        String extension = OsHelper.isWindows() ? ".bat" : ".sh";
         File tempScript = File.createTempFile("ant_build_", extension, workingDir);
 
         try (FileWriter writer = new FileWriter(tempScript)) {
-            if (isWindows()) {
+            if (OsHelper.isWindows()) {
                 writer.write("@echo off\r\n");
-                String windowsCommand = command.replace("\n", "\r\n");
-                writer.write(windowsCommand);
+                writer.write(command.replace("\n", "\r\n"));
                 writer.write("\r\n");
             } else {
                 writer.write("#!/bin/bash\n");
-                String unixCommand = convertToUnixScript(command);
-                writer.write(unixCommand);
+                writer.write(convertToUnixScript(command));
                 writer.write("\n");
             }
         }
 
-        if (!isWindows()) {
+        if (!OsHelper.isWindows()) {
             tempScript.setExecutable(true);
         }
 
@@ -257,15 +221,15 @@ public class BuildService {
     }
 
     /**
-     * Converts Windows-style commands to Unix-style
+     * Convertește comenzi Windows la Unix.
+     * Momentan transformă doar "set VAR=val" → "export VAR=val".
      */
     private String convertToUnixScript(String command) {
         StringBuilder result = new StringBuilder();
         for (String line : command.split("\\r?\\n")) {
-            String trimmedLine = line.trim();
-            if (trimmedLine.toLowerCase().startsWith("set ")) {
-                String varPart = trimmedLine.substring(4);
-                result.append("export ").append(varPart);
+            String trimmed = line.trim();
+            if (trimmed.toLowerCase().startsWith("set ")) {
+                result.append("export ").append(trimmed.substring(4));
             } else {
                 result.append(line);
             }
@@ -274,8 +238,49 @@ public class BuildService {
         return result.toString();
     }
 
-    private boolean isWindows() {
-        return System.getProperty("os.name").toLowerCase().contains("win");
+    /**
+     * Validare cu Optional — permite chaining cu .or().
+     * Optional.empty() = valid, Optional.of(failure) = invalid.
+     */
+    private java.util.Optional<BuildResult> validateNotEmpty(String value, String errorMessage) {
+        if (value == null || value.trim().isEmpty()) {
+            return java.util.Optional.of(BuildResult.failure(errorMessage));
+        }
+        return java.util.Optional.empty();
+    }
+
+    private java.util.Optional<BuildResult> validateFileExists(String path, String errorMessage) {
+        if (path != null && !new File(path).exists()) {
+            return java.util.Optional.of(BuildResult.failure(errorMessage));
+        }
+        return java.util.Optional.empty();
+    }
+
+    private void logBuildInfo(File workingDir, String antPath) {
+        log("✓ Build file: " + project.getBuildFilePath());
+        log("✓ Ant target: " + project.getAntTarget());
+        log("✓ Ant path: " + antPath);
+        log("✓ Working directory: " + workingDir.getAbsolutePath());
+    }
+
+    private void logCommand(String command) {
+        log("-------------------------------");
+        log("▶ Command to execute:");
+        for (String line : command.split("\\r?\\n")) {
+            log("  " + line);
+        }
+        log("-------------------------------");
+    }
+
+    private void cleanupTempScript(File tempScript) {
+        if (tempScript != null && tempScript.exists()) {
+            try {
+                Files.delete(tempScript.toPath());
+                log("✓ Cleaned up temp script");
+            } catch (Exception e) {
+                LOGGER.log(Level.WARNING, "Failed to delete temp script", e);
+            }
+        }
     }
 
     private void log(String message) {

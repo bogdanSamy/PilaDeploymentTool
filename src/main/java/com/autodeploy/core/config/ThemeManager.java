@@ -6,21 +6,22 @@ import javafx.application.Application;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+/**
+ * Gestionare teme — AtlantaFX standard + teme custom (CSS override pe Primer Light).
+ * Pentru a adăuga o temă nouă: adaugă în enum Theme + în CUSTOM_THEME_PATHS.
+ */
 public class ThemeManager {
 
-    // =================================================================================
-    // CONFIGURAȚIE - Adaugă temele noi DOAR aici!
-    // =================================================================================
+    private static final Logger LOGGER = Logger.getLogger(ThemeManager.class.getName());
 
-    /**
-     * Mapare teme custom -> căi CSS.
-     * Pentru o temă nouă, adaugă o intrare aici și în enum.
-     */
     private static final Map<Theme, String> CUSTOM_THEME_PATHS = Map.of(
             Theme.BABY_PINK, "/css/custom-themes/baby-pink.css",
             Theme.FOREST_GREEN, "/css/custom-themes/forest-green.css",
@@ -31,9 +32,6 @@ public class ThemeManager {
             Theme.CHRISTMAS, "/css/custom-themes/christmas.css"
     );
 
-    /**
-     * Mapare teme AtlantaFX standard -> supplier-i pentru instanțe.
-     */
     private static final Map<Theme, Supplier<atlantafx.base.theme.Theme>> ATLANTAFX_THEMES = Map.of(
             Theme.PRIMER_LIGHT, PrimerLight::new,
             Theme.PRIMER_DARK, PrimerDark::new,
@@ -42,14 +40,9 @@ public class ThemeManager {
             Theme.DRACULA, Dracula::new
     );
 
-    /**
-     * Tema de bază pentru override-urile custom.
-     */
     private static final Supplier<atlantafx.base.theme.Theme> BASE_THEME = PrimerLight::new;
 
-    // =================================================================================
-    // ENUM THEME
-    // =================================================================================
+    private ThemeManager() {}
 
     public enum Theme {
         PRIMER_LIGHT("Primer Light"),
@@ -71,9 +64,7 @@ public class ThemeManager {
             this.displayName = displayName;
         }
 
-        public String getDisplayName() {
-            return displayName;
-        }
+        public String getDisplayName() { return displayName; }
 
         public static Theme fromDisplayName(String displayName) {
             for (Theme theme : values()) {
@@ -85,10 +76,6 @@ public class ThemeManager {
         }
     }
 
-    // =================================================================================
-    // METODE PUBLICE
-    // =================================================================================
-
     public static void applyTheme(String themeName) {
         applyTheme(Theme.fromDisplayName(themeName));
     }
@@ -98,43 +85,39 @@ public class ThemeManager {
                 ? buildCustomStylesheet(theme)
                 : getAtlantaFXStylesheet(theme);
 
+        if (stylesheet == null || stylesheet.isEmpty()) {
+            LOGGER.warning("Could not resolve stylesheet for theme: " + theme);
+            return;
+        }
+
         Application.setUserAgentStylesheet(stylesheet);
     }
 
     public static void loadSavedTheme() {
-        ApplicationConfig config = ApplicationConfig.getInstance();
-        applyTheme(config.getTheme());
+        applyTheme(ApplicationConfig.getInstance().getTheme());
     }
 
     public static String[] getAvailableThemes() {
-        Theme[] themes = Theme.values();
-        String[] themeNames = new String[themes.length];
-        for (int i = 0; i < themes.length; i++) {
-            themeNames[i] = themes[i].getDisplayName();
-        }
-        return themeNames;
+        return Arrays.stream(Theme.values())
+                .map(Theme::getDisplayName)
+                .toArray(String[]::new);
     }
 
-    // =================================================================================
-    // METODE PRIVATE HELPER
-    // =================================================================================
-
     /**
-     * Construiește stylesheet-ul pentru o temă custom (base + override).
+     * Construiește un stylesheet compozit: tema de bază (Primer Light) + override-ul CSS custom.
+     * Rezultatul e encodat Base64 într-un data-URI, deoarece JavaFX nu suportă
+     * încărcarea a două stylesheet-uri ca user-agent theme simultan.
      */
     private static String buildCustomStylesheet(Theme theme) {
         String baseThemeUrl = BASE_THEME.get().getUserAgentStylesheet();
-        String customCssContent = loadResourceContent(CUSTOM_THEME_PATHS.get(theme));
+        String customCss = loadResourceContent(CUSTOM_THEME_PATHS.get(theme));
 
-        String combinedCss = "@import url(\"" + baseThemeUrl + "\");\n" + customCssContent;
+        String combined = "@import url(\"" + baseThemeUrl + "\");\n" + customCss;
 
         return "data:text/css;base64," +
-                Base64.getEncoder().encodeToString(combinedCss.getBytes(StandardCharsets.UTF_8));
+                Base64.getEncoder().encodeToString(combined.getBytes(StandardCharsets.UTF_8));
     }
 
-    /**
-     * Obține stylesheet-ul pentru o temă AtlantaFX standard.
-     */
     private static String getAtlantaFXStylesheet(Theme theme) {
         return Optional.ofNullable(ATLANTAFX_THEMES.get(theme))
                 .map(supplier -> supplier.get().getUserAgentStylesheet())
@@ -144,12 +127,12 @@ public class ThemeManager {
     private static String loadResourceContent(String path) {
         try (InputStream is = ThemeManager.class.getResourceAsStream(path)) {
             if (is == null) {
-                System.err.println("Nu s-a putut găsi fișierul de resurse: " + path);
+                LOGGER.warning("Theme resource not found: " + path);
                 return "";
             }
             return new String(is.readAllBytes(), StandardCharsets.UTF_8);
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Failed to load theme resource: " + path, e);
             return "";
         }
     }

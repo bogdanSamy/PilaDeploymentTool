@@ -11,7 +11,11 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
- * Service for opening URLs in system browser
+ * Deschide URL-uri în browser-ul default al sistemului.
+ * <p>
+ * Strategie: încearcă mai întâi {@link Desktop#browse}, și dacă nu e suportat
+ * (headless, unele distribuții Linux), face fallback pe comanda OS nativă
+ * (rundll32/open/xdg-open).
  */
 public class BrowserService {
 
@@ -26,30 +30,30 @@ public class BrowserService {
     }
 
     /**
-     * Open server in browser
+     * Deschide URL-ul complet al serverului (IP + suffix configurat) în browser.
      */
     public boolean openServer(Server server) {
         log("🌐 Opening server in browser...");
-
         String url = appConfig.getFullBrowserUrl(server.getHost());
         log("✓ URL: " + url);
-
         return openUrl(url);
     }
 
     /**
-     * Open URL in browser
+     * Deschide un URL în browser-ul default. Fallback pe comandă OS nativă
+     * dacă {@link Desktop#browse} nu e disponibil sau eșuează.
      */
     public boolean openUrl(String url) {
         try {
-            if (Desktop.isDesktopSupported() && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
+            if (Desktop.isDesktopSupported()
+                    && Desktop.getDesktop().isSupported(Desktop.Action.BROWSE)) {
                 Desktop.getDesktop().browse(new URI(url));
                 log("✓ Browser opened successfully");
                 return true;
-            } else {
-                log("✗ Desktop browse is not supported on this platform");
-                return openUrlFallback(url);
             }
+
+            log("✗ Desktop browse not supported, trying fallback...");
+            return openUrlFallback(url);
 
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Failed to open browser", e);
@@ -59,31 +63,27 @@ public class BrowserService {
     }
 
     /**
-     * Fallback method using command line
+     * Fallback: deschide URL-ul prin comanda nativă a OS-ului.
+     * Windows: rundll32, macOS: open, Linux: xdg-open.
      */
     private boolean openUrlFallback(String url) {
         try {
-            String os = System.getProperty("os.name").toLowerCase();
+            ProcessBuilder pb;
 
-            if (os.contains("win")) {
-                Runtime.getRuntime().exec("rundll32 url.dll,FileProtocolHandler " + url);
-                log("✓ Browser opened via Windows command");
-                return true;
-
-            } else if (os.contains("mac")) {
-                Runtime.getRuntime().exec("open " + url);
-                log("✓ Browser opened via macOS command");
-                return true;
-
-            } else if (os.contains("nix") || os.contains("nux")) {
-                Runtime.getRuntime().exec("xdg-open " + url);
-                log("✓ Browser opened via Linux command");
-                return true;
-
+            if (OsHelper.isWindows()) {
+                pb = new ProcessBuilder("rundll32", "url.dll,FileProtocolHandler", url);
+            } else if (OsHelper.isMac()) {
+                pb = new ProcessBuilder("open", url);
+            } else if (OsHelper.isLinux()) {
+                pb = new ProcessBuilder("xdg-open", url);
             } else {
-                log("✗ Unsupported operating system: " + os);
+                log("✗ Unsupported operating system");
                 return false;
             }
+
+            pb.start();
+            log("✓ Browser opened via system command");
+            return true;
 
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Fallback browser open failed", e);
@@ -92,9 +92,6 @@ public class BrowserService {
         }
     }
 
-    /**
-     * Log message
-     */
     private void log(String message) {
         logger.accept(message);
     }

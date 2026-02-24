@@ -1,5 +1,6 @@
 package com.autodeploy.domain.model;
 
+import com.autodeploy.core.util.StringUtils;
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -9,9 +10,27 @@ import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
+/**
+ * Configurație de proiect pentru deployment.
+ * <p>
+ * Definește căile locale (surse build) și remote (destinație SFTP):
+ * <ul>
+ *   <li>JAR — fișierele compilate (din build Ant)</li>
+ *   <li>JSP — paginile web (copiate direct)</li>
+ * </ul>
+ * Persistat în projects.json prin {@link com.autodeploy.domain.manager.ProjectManager}.
+ */
 public class Project {
 
-    private String id, name, localJarPath, localJspPath, remoteJarPath, remoteJspPath, buildFilePath, antTarget, antCommand;
+    private String id;
+    private String name;
+    private String localJarPath;
+    private String localJspPath;
+    private String remoteJarPath;
+    private String remoteJspPath;
+    private String buildFilePath;
+    private String antTarget;
+    private String antCommand;
     private List<String> antLibraries;
 
     public Project() {
@@ -49,6 +68,8 @@ public class Project {
         this.antLibraries = (antLibraries != null) ? new ArrayList<>(antLibraries) : new ArrayList<>();
     }
 
+    // --- Getters / Setters (neschimbate) ---
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
 
@@ -81,25 +102,24 @@ public class Project {
         this.antLibraries = (antLibraries != null) ? new ArrayList<>(antLibraries) : new ArrayList<>();
     }
 
+    /**
+     * Validare minimală: toate căile și configurările de build sunt obligatorii.
+     * Ant libraries e opțional (unele proiecte nu au dependențe externe).
+     */
     @JsonIgnore
     public boolean isValid() {
-        return isNotEmpty(name)
-                && isNotEmpty(localJarPath)
-                && isNotEmpty(localJspPath)
-                && isNotEmpty(remoteJarPath)
-                && isNotEmpty(remoteJspPath)
-                && isNotEmpty(buildFilePath)
-                && isNotEmpty(antTarget);
-    }
-
-    private boolean isNotEmpty(String str) {
-        return str != null && !str.trim().isEmpty();
+        return StringUtils.isNotEmpty(name)
+                && StringUtils.isNotEmpty(localJarPath)
+                && StringUtils.isNotEmpty(localJspPath)
+                && StringUtils.isNotEmpty(remoteJarPath)
+                && StringUtils.isNotEmpty(remoteJspPath)
+                && StringUtils.isNotEmpty(buildFilePath)
+                && StringUtils.isNotEmpty(antTarget)
+                && StringUtils.isNotEmpty(antCommand);
     }
 
     @Override
-    public String toString() {
-        return name;
-    }
+    public String toString() { return name; }
 
     @Override
     public boolean equals(Object o) {
@@ -110,7 +130,5 @@ public class Project {
     }
 
     @Override
-    public int hashCode() {
-        return Objects.hash(id);
-    }
+    public int hashCode() { return Objects.hash(id); }
 }

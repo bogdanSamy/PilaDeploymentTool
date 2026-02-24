@@ -5,10 +5,12 @@ import com.autodeploy.domain.manager.ProjectManager;
 import com.autodeploy.domain.manager.ServerManager;
 import com.autodeploy.domain.model.Project;
 import com.autodeploy.domain.model.Server;
-import com.autodeploy.ui.dialogs.CustomAlert;
-import com.autodeploy.ui.dialogs.ProjectManagementDialog;
-import com.autodeploy.ui.dialogs.ServerManagementDialog;
-import com.autodeploy.ui.dialogs.SettingsDialog;
+import com.autodeploy.ui.dialog.CustomAlert;
+import com.autodeploy.ui.dialog.ProjectManagementDialog;
+import com.autodeploy.ui.dialog.ServerManagementDialog;
+import com.autodeploy.ui.dialog.SettingsDialog;
+import com.autodeploy.ui.window.component.DialogManager;
+import com.autodeploy.ui.window.component.SelectionComboManager;
 import io.github.palexdev.materialfx.controls.MFXButton;
 import javafx.collections.ListChangeListener;
 import javafx.fxml.FXML;
@@ -21,60 +23,55 @@ import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.shape.SVGPath;
-import javafx.stage.Stage; // Added import
 import xss.it.nfx.NfxStage;
 import xss.it.nfx.WindowState;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.ResourceBundle;
-import java.util.function.Function;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+import static com.autodeploy.core.constants.Constants.*;
+
+/**
+ * Fereastra de selecție — primul ecran al aplicației.
+ * User-ul alege un server și un proiect, apoi apasă "Start Deploy".
+ * <p>
+ * Funcționalitate:
+ * <ul>
+ *   <li>Selecție server + proiect prin combo box-uri (obiecte domeniu, nu String-uri)</li>
+ *   <li>Butonul "Start Deploy" e disabled până când ambele selecții sunt făcute</li>
+ *   <li>Deschidere dialoguri de management (servere, proiecte, setări) cu refresh
+ *       automat al listelor la închidere</li>
+ * </ul>
+ * <p>
+ * Navigare: SelectionWindow → {@link DeploymentWindow} (această fereastră se ascunde,
+ * nu se distruge — DeploymentWindow o poate re-afișa la "Change Project/Server").
+ */
 public class SelectionWindow extends NfxStage implements Initializable {
 
     private static final Logger LOGGER = Logger.getLogger(SelectionWindow.class.getName());
 
-    // Constants
-    public static final String MIN_SHAPE = "M1 7L1 8L14 8L14 7Z";
-    public static final String MAX_SHAPE = "M2.5 2 A 0.50005 0.50005 0 0 0 2 2.5L2 13.5 A 0.50005 0.50005 0 0 0 2.5 14L13.5 14 A 0.50005 0.50005 0 0 0 14 13.5L14 2.5 A 0.50005 0.50005 0 0 0 13.5 2L2.5 2 z M 3 3L13 3L13 13L3 13L3 3 z";
-    public static final String REST_SHAPE = "M4.5 2 A 0.50005 0.50005 0 0 0 4 2.5L4 4L2.5 4 A 0.50005 0.50005 0 0 0 2 4.5L2 13.5 A 0.50005 0.50005 0 0 0 2.5 14L11.5 14 A 0.50005 0.50005 0 0 0 12 13.5L12 12L13.5 12 A 0.50005 0.50005 0 0 0 14 11.5L14 2.5 A 0.50005 0.50005 0 0 0 13.5 2L4.5 2 z M 5 3L13 3L13 11L12 11L12 4.5 A 0.50005 0.50005 0 0 0 11.5 4L5 4L5 3 z M 3 5L11 5L11 13L3 13L3 5 z";
-    public static final String CLOSE_SHAPE = "M3.726563 3.023438L3.023438 3.726563L7.292969 8L3.023438 12.269531L3.726563 12.980469L8 8.707031L12.269531 12.980469L12.980469 12.269531L8.707031 8L12.980469 3.726563L12.269531 3.023438L8 7.292969Z";
-    private static final String WINDOW_TITLE = "La Pila & La Ciocan";
-    private static final double TITLE_BAR_HEIGHT = 40.0;
-    private static final String SERVER_PROMPT = "Select a server...";
-    private static final String PROJECT_PROMPT = "Select a project...";
-
-    // UI Controls
-    @FXML private Button closeBtn, maxBtn, minBtn;
+    @FXML private Button closeBtn;
+    @FXML private Button maxBtn;
+    @FXML private Button minBtn;
     @FXML private SVGPath maxShape;
     @FXML private ImageView iconView;
     @FXML private Label title;
-    @FXML private ComboBox<String> serverComboBox, projectComboBox;
-    @FXML private MFXButton manageProjectsBtn, manageServersBtn, settingsBtn, startDeployBtn;
+    @FXML private ComboBox<Server> serverComboBox;
+    @FXML private ComboBox<Project> projectComboBox;
+    @FXML private MFXButton manageProjectsBtn;
+    @FXML private MFXButton manageServersBtn;
+    @FXML private MFXButton settingsBtn;
+    @FXML private MFXButton startDeployBtn;
 
-    // Data Managers
-    private final ServerManager serverManager;
-    private final ProjectManager projectManager;
-
-    // Dialog Instances (Singletons for this window)
-    private SettingsDialog settingsDialog;
-    private ProjectManagementDialog projectManagementDialog;
-    private ServerManagementDialog serverManagementDialog;
-
-    // =================================================================================================================
-    // INITIALIZATION
-    // =================================================================================================================
+    private DialogManager dialogManager;
+    private SelectionComboManager comboManager;
 
     public SelectionWindow() {
         super();
-        this.projectManager = ProjectManager.getInstance();
-        this.serverManager = ServerManager.getInstance();
-
         try {
             initializeWindow();
         } catch (IOException e) {
@@ -84,78 +81,89 @@ public class SelectionWindow extends NfxStage implements Initializable {
     }
 
     private void initializeWindow() throws IOException {
-        getIcons().add(new Image(Assets.load("/logo.png").toExternalForm()));
-        Parent parent = Assets.load("/fxml/selection-window.fxml", this);
-        Scene scene = new Scene(parent);
-        setScene(scene);
+        getIcons().add(new Image(Assets.location("/logo.png").toExternalForm()));
+        Parent parent = Assets.loadFxml("/fxml/selection-window.fxml", this);
+        setScene(new Scene(parent));
         setTitle(WINDOW_TITLE);
     }
 
     @Override
     public void initialize(URL location, ResourceBundle resources) {
+        initComponents();
         setupTitleBar();
-        setupComboBoxes();
-        setupButtons();
+        comboManager.setup();
+        bindActions();
     }
 
+    private void initComponents() {
+        dialogManager = new DialogManager(this);
+
+        comboManager = new SelectionComboManager(
+                serverComboBox, projectComboBox,
+                ServerManager.getInstance(),
+                ProjectManager.getInstance()
+        );
+
+        comboManager.setOnSelectionChanged(this::updateStartButtonState);
+    }
+
+    /**
+     * Title bar inline (nu folosește TitleBarManager deoarece SelectionWindow
+     * e mai simplă — nu necesită reutilizare a pattern-ului).
+     */
     private void setupTitleBar() {
         getIcons().addListener((ListChangeListener<? super Image>) observable -> {
-            if (!getIcons().isEmpty()) iconView.setImage(getIcons().get(0));
+            if (!getIcons().isEmpty()) {
+                iconView.setImage(getIcons().getFirst());
+            }
         });
 
-        titleProperty().addListener((observable, oldValue, newValue) -> title.setText(newValue));
+        titleProperty().addListener((obs, oldVal, newVal) -> title.setText(newVal));
 
         setCloseControl(closeBtn);
         setMaxControl(maxBtn);
         setMinControl(minBtn);
 
-        handleMaxStateChangeShape(getWindowState());
-        windowStateProperty().addListener((obs, oldState, newState) -> handleMaxStateChangeShape(newState));
+        updateMaxShape(getWindowState());
+        windowStateProperty().addListener((obs, oldState, newState) -> updateMaxShape(newState));
     }
 
-    private void setupComboBoxes() {
-        // Setup Server Combo
-        serverComboBox.setPromptText(SERVER_PROMPT);
-        serverComboBox.setMaxWidth(Double.MAX_VALUE);
-        loadServersFromJson();
-
-        // Setup Project Combo
-        projectComboBox.setPromptText(PROJECT_PROMPT);
-        projectComboBox.setMaxWidth(Double.MAX_VALUE);
-        loadProjectsFromJson();
-
-        // Add Listeners
-        serverComboBox.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> updateStartButtonState());
-        projectComboBox.getSelectionModel().selectedItemProperty().addListener((obs, old, newVal) -> updateStartButtonState());
+    private void updateMaxShape(WindowState state) {
+        maxShape.setContent(Objects.equals(state, WindowState.MAXIMIZED) ? REST_SHAPE : MAX_SHAPE);
     }
 
-    private void setupButtons() {
+    private void bindActions() {
         startDeployBtn.setOnAction(e -> handleStartDeploy());
-
-        Optional.ofNullable(manageServersBtn).ifPresent(btn -> btn.setOnAction(e -> openServerManagementDialog()));
-        Optional.ofNullable(manageProjectsBtn).ifPresent(btn -> btn.setOnAction(e -> openProjectManagementDialog()));
-        Optional.ofNullable(settingsBtn).ifPresent(btn -> btn.setOnAction(e -> openSettingsDialog()));
+        manageServersBtn.setOnAction(e -> openServerManagement());
+        manageProjectsBtn.setOnAction(e -> openProjectManagement());
+        settingsBtn.setOnAction(e -> openSettings());
     }
 
-    // =================================================================================================================
-    // ACTIONS
-    // =================================================================================================================
+    private void updateStartButtonState() {
+        startDeployBtn.setDisable(!comboManager.isBothSelected());
+    }
 
     private void handleStartDeploy() {
-        String serverStr = serverComboBox.getSelectionModel().getSelectedItem();
-        String projectName = projectComboBox.getSelectionModel().getSelectedItem();
+        Project project = comboManager.getSelectedProject();
+        Server server = comboManager.getSelectedServer();
 
-        Project project = projectManager.findProjectByName(projectName);
-        Server server = findServerFromString(serverStr);
-
-        if (project != null && server != null) {
-            openDeploymentWindow(project, server);
-        } else {
+        if (project == null || server == null) {
             LOGGER.warning("Invalid project or server selection");
-            CustomAlert.showError("Selection Error", "Please select both a valid project and server.");
+            CustomAlert.showError("Selection Error",
+                    "Please select both a valid project and server.");
+            return;
         }
+
+        openDeploymentWindow(project, server);
     }
 
+    /**
+     * Creează DeploymentWindow, îi pasează referința la această fereastră
+     * (pentru navigare înapoi), o afișează, și ascunde SelectionWindow.
+     * <p>
+     * {@code this.close()} ascunde fereastra — DeploymentWindow o poate
+     * re-afișa prin {@code selectionWindow.show()} la "Change Project/Server".
+     */
     private void openDeploymentWindow(Project project, Server server) {
         try {
             LOGGER.info("Opening deployment window with SFTP connection");
@@ -163,146 +171,47 @@ public class SelectionWindow extends NfxStage implements Initializable {
             DeploymentWindow deploymentWindow = new DeploymentWindow(project, server);
             deploymentWindow.setSelectionWindow(this);
             deploymentWindow.show();
-            // Connect logic happens inside DeploymentWindow's init
 
             this.close();
 
         } catch (Exception ex) {
             LOGGER.log(Level.SEVERE, "Error opening deployment window", ex);
-            CustomAlert.showError("Connection Error", "Failed to open deployment window:\n" + ex.getMessage());
+            CustomAlert.showError("Connection Error",
+                    "Failed to open deployment window:\n" + ex.getMessage());
         }
     }
 
-    // =================================================================================================================
-    // DIALOG MANAGEMENT
-    // =================================================================================================================
-
-    private void openServerManagementDialog() {
-        if (isDialogAlreadyOpen(serverManagementDialog)) return;
-
-        try {
-            LOGGER.info("Opening Server Management Dialog");
-            serverManagementDialog = new ServerManagementDialog(true);
-            serverManagementDialog.initOwner(this);
-            serverManagementDialog.centerOnScreen();
-            serverManagementDialog.setOnHidden(event -> {
-                refreshServerComboBox();
-                serverManagementDialog = null;
-                LOGGER.info("Server Management Dialog closed");
-            });
-            serverManagementDialog.show();
-        } catch (Exception ex) {
-            handleDialogError("Server Management", ex);
-            serverManagementDialog = null;
-        }
+    /**
+     * Dialogurile de management primesc un callback {@code onClosed} care
+     * refreshează combo box-ul corespunzător — astfel modificările (add/edit/delete)
+     * sunt reflectate imediat în lista de selecție.
+     */
+    private void openServerManagement() {
+        dialogManager.openDialog(
+                ServerManagementDialog.class,
+                () -> new ServerManagementDialog(true),
+                "Server Management",
+                comboManager::refreshServers
+        );
     }
 
-    private void openProjectManagementDialog() {
-        if (isDialogAlreadyOpen(projectManagementDialog)) return;
-
-        try {
-            LOGGER.info("Opening Project Management Dialog");
-            projectManagementDialog = new ProjectManagementDialog(true);
-            projectManagementDialog.initOwner(this);
-            projectManagementDialog.centerOnScreen();
-            projectManagementDialog.setOnHidden(event -> {
-                refreshProjectComboBox();
-                projectManagementDialog = null;
-                LOGGER.info("Project Management Dialog closed");
-            });
-            projectManagementDialog.show();
-        } catch (Exception ex) {
-            handleDialogError("Project Management", ex);
-            projectManagementDialog = null;
-        }
+    private void openProjectManagement() {
+        dialogManager.openDialog(
+                ProjectManagementDialog.class,
+                () -> new ProjectManagementDialog(true),
+                "Project Management",
+                comboManager::refreshProjects
+        );
     }
 
-    private void openSettingsDialog() {
-        if (isDialogAlreadyOpen(settingsDialog)) return;
-
-        try {
-            LOGGER.info("Opening Settings Dialog");
-            settingsDialog = new SettingsDialog(true);
-            settingsDialog.initOwner(this);
-            settingsDialog.centerOnScreen();
-            settingsDialog.setOnHidden(event -> {
-                settingsDialog = null;
-                LOGGER.info("Settings Dialog closed");
-            });
-            settingsDialog.show();
-        } catch (Exception ex) {
-            handleDialogError("Settings", ex);
-            settingsDialog = null;
-        }
-    }
-
-    private boolean isDialogAlreadyOpen(Stage dialog) {
-        if (dialog != null && dialog.isShowing()) {
-            dialog.toFront();
-            dialog.requestFocus();
-            LOGGER.info("Dialog already open, bringing to front");
-            return true;
-        }
-        return false;
-    }
-
-    private void handleDialogError(String dialogName, Exception ex) {
-        LOGGER.log(Level.SEVERE, "Error opening " + dialogName + " dialog", ex);
-        CustomAlert.showError("Dialog Error", "Failed to open " + dialogName + " dialog:\n" + ex.getMessage());
-    }
-
-    // =================================================================================================================
-    // HELPERS (Data Loading & UI Updates)
-    // =================================================================================================================
-
-    private void loadProjectsFromJson() {
-        loadItemsIntoComboBox(projectComboBox, projectManager.getProjects(), Project::getName);
-        LOGGER.info(String.format("Loaded %d projects", projectComboBox.getItems().size()));
-    }
-
-    private void loadServersFromJson() {
-        loadItemsIntoComboBox(serverComboBox, serverManager.getServers(), Server::toString);
-        LOGGER.info(String.format("Loaded %d servers", serverComboBox.getItems().size()));
-    }
-
-    private <T> void loadItemsIntoComboBox(ComboBox<String> comboBox, List<T> items, Function<T, String> toStringFunction) {
-        comboBox.getItems().clear();
-        items.stream().map(toStringFunction).forEach(comboBox.getItems()::add);
-    }
-
-    private void refreshComboBox(ComboBox<String> comboBox, Runnable loadMethod, String itemType) {
-        String currentSelection = comboBox.getSelectionModel().getSelectedItem();
-        loadMethod.run();
-
-        if (currentSelection != null && comboBox.getItems().contains(currentSelection)) {
-            comboBox.getSelectionModel().select(currentSelection);
-        }
-        LOGGER.info(String.format("Refreshed %s list", itemType));
-    }
-
-    private void refreshProjectComboBox() {
-        refreshComboBox(projectComboBox, this::loadProjectsFromJson, "project");
-    }
-
-    private void refreshServerComboBox() {
-        refreshComboBox(serverComboBox, this::loadServersFromJson, "server");
-    }
-
-    private void updateStartButtonState() {
-        boolean bothSelected = serverComboBox.getSelectionModel().getSelectedItem() != null
-                && projectComboBox.getSelectionModel().getSelectedItem() != null;
-        startDeployBtn.setDisable(!bothSelected);
-    }
-
-    private Server findServerFromString(String serverStr) {
-        return serverManager.getServers().stream()
-                .filter(server -> server.toString().equals(serverStr))
-                .findFirst()
-                .orElse(null);
-    }
-
-    private void handleMaxStateChangeShape(WindowState state) {
-        maxShape.setContent(Objects.equals(state, WindowState.MAXIMIZED) ? REST_SHAPE : MAX_SHAPE);
+    /** Settings nu necesită refresh la închidere — nu afectează listele. */
+    private void openSettings() {
+        dialogManager.openDialog(
+                SettingsDialog.class,
+                () -> new SettingsDialog(true),
+                "Settings",
+                null
+        );
     }
 
     @Override

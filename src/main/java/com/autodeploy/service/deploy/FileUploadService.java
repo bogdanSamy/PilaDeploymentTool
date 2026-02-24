@@ -1,9 +1,11 @@
 package com.autodeploy.service.deploy;
 
 import com.autodeploy.domain.model.Project;
-import com.autodeploy.infrastructure.sftp.SftpManager;
+import com.autodeploy.infrastructure.connection.ConnectionManager;
+import com.autodeploy.service.utility.FileSizeFormatter;
 import javafx.application.Platform;
 import javafx.scene.control.CheckBox;
+
 import java.io.File;
 import java.util.List;
 import java.util.Map;
@@ -11,143 +13,156 @@ import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Serviciu de upload fișiere (JAR și JSP) pe server prin SFTP.
+ * <p>
+ * Upload-ul e secvențial (fișier cu fișier) și se oprește automat
+ * dacă detectează pierderea conexiunii mid-transfer.
+ * <p>
+ * Strategia de rezolvare a căilor diferă între JAR și JSP:
+ * <ul>
+ *   <li><b>JAR:</b> fișiere plate în directorul root (ex: "mylib-1.0.jar")</li>
+ *   <li><b>JSP:</b> cale relativă cu subfoldere păstrate (ex: "pages/admin/index.jsp")</li>
+ * </ul>
+ * Diferența e abstractizată prin {@link PathResolver} (Strategy pattern).
+ */
 public class FileUploadService {
 
     private static final Logger LOGGER = Logger.getLogger(FileUploadService.class.getName());
 
+    private static final String DEFAULT_CHECKBOX_STYLE =
+            "-fx-font-size: 13px; -fx-text-fill: -color-fg-default; -fx-padding: 5px 5px 5px %dpx;";
+
     private final Project project;
-    private final SftpManager sftpManager;
+    private final ConnectionManager connectionManager;
     private final Consumer<String> logger;
 
-    public FileUploadService(Project project, SftpManager sftpManager, Consumer<String> logger) {
+    public FileUploadService(Project project, ConnectionManager connectionManager, Consumer<String> logger) {
         this.project = project;
-        this.sftpManager = sftpManager;
+        this.connectionManager = connectionManager;
         this.logger = logger;
     }
 
-    public static class UploadResult {
-        private final int successCount;
-        private final int failCount;
-        private final boolean connectionLost;
-
-        public UploadResult(int successCount, int failCount, boolean connectionLost) {
-            this.successCount = successCount;
-            this.failCount = failCount;
-            this.connectionLost = connectionLost;
-        }
-
-        public int getSuccessCount() { return successCount; }
-        public int getFailCount() { return failCount; }
-        public boolean isConnectionLost() { return connectionLost; }
-        public int getTotalCount() { return successCount + failCount; }
-    }
-
     public UploadResult uploadJars(Map<String, CheckBox> jarCheckBoxMap) {
-        List<String> selectedJars = getSelectedFiles(jarCheckBoxMap);
-
-        if (selectedJars.isEmpty()) {
-            return new UploadResult(0, 0, false);
-        }
-
-        log("📤 Starting upload of " + selectedJars.size() + " JAR file(s)...");
-
-        int successCount = 0;
-        int failCount = 0;
-        boolean connectionLost = false;
-
-        for (String jarFileName : selectedJars) {
-            if (!sftpManager.isConnected()) {
-                log("✗ Connection lost during upload!");
-                connectionLost = true;
-                failCount += (selectedJars.size() - successCount - failCount);
-                break;
-            }
-
-            try {
-                String localPath = project.getLocalJarPath() + File.separator + jarFileName;
-                String remotePath = project.getRemoteJarPath() + "/" + jarFileName;
-
-                if (!uploadFile(localPath, remotePath, jarFileName)) {
-                    failCount++;
-                    continue;
-                }
-
-                successCount++;
-                uncheckAndUnhighlightFile(jarCheckBoxMap, jarFileName, 5);
-
-            } catch (Exception e) {
-                log("  ✗ Failed to upload " + jarFileName + ": " + e.getMessage());
-                failCount++;
-
-                if (isConnectionError(e)) {
-                    log("⚠ Connection error detected, stopping upload...");
-                    connectionLost = true;
-                    failCount += (selectedJars.size() - successCount - failCount);
-                    break;
-                }
-            }
-        }
-
-        logUploadSummary("JARs", successCount, failCount);
-        return new UploadResult(successCount, failCount, connectionLost);
+        return uploadFiles(jarCheckBoxMap, "JARs", new JarPathResolver());
     }
 
     public UploadResult uploadJsps(Map<String, CheckBox> jspCheckBoxMap) {
-        List<String> selectedJsps = getSelectedFiles(jspCheckBoxMap);
+        return uploadFiles(jspCheckBoxMap, "JSPs", new JspPathResolver());
+    }
 
-        if (selectedJsps.isEmpty()) {
+    /**
+     * Strategie de rezolvare a căilor locale/remote și a indentării checkbox-urilor.
+     * JAR-urile au cale simplă (un singur nivel), JSP-urile păstrează structura de foldere.
+     */
+    private interface PathResolver {
+        String getLocalPath(String fileName);
+        String getRemotePath(String fileName);
+
+        /** Indent-ul checkbox-ului în UI — JSP-urile au indent proporțional cu adâncimea folderului. */
+        int getCheckboxIndent(String fileName);
+    }
+
+    private class JarPathResolver implements PathResolver {
+        @Override
+        public String getLocalPath(String fileName) {
+            return project.getLocalJarPath() + File.separator + fileName;
+        }
+
+        @Override
+        public String getRemotePath(String fileName) {
+            return project.getRemoteJarPath() + "/" + fileName;
+        }
+
+        @Override
+        public int getCheckboxIndent(String fileName) {
+            return 5;
+        }
+    }
+
+    /**
+     * JSP path resolver — păstrează structura relativă de foldere.
+     * Indent-ul în UI reflectă adâncimea: "pages/admin/index.jsp" → indent 55px (15 + 2*20).
+     */
+    private class JspPathResolver implements PathResolver {
+        @Override
+        public String getLocalPath(String relativePath) {
+            return project.getLocalJspPath() + File.separator +
+                    relativePath.replace("/", File.separator);
+        }
+
+        @Override
+        public String getRemotePath(String relativePath) {
+            return project.getRemoteJspPath() + "/" + relativePath;
+        }
+
+        @Override
+        public int getCheckboxIndent(String relativePath) {
+            int depth = relativePath.split("/").length - 1;
+            return 15 + (depth * 20);
+        }
+    }
+
+    /**
+     * Upload generic pentru orice tip de fișiere.
+     * <p>
+     * Comportament la eroare de conexiune: se oprește imediat și marchează
+     * toate fișierele rămase ca eșuate (nu încearcă upload pe conexiune moartă).
+     * Checkbox-urile fișierelor uploadate cu succes sunt resetate (deselected + stil default).
+     */
+    private UploadResult uploadFiles(Map<String, CheckBox> checkBoxMap,
+                                     String fileType,
+                                     PathResolver pathResolver) {
+        List<String> selectedFiles = getSelectedFiles(checkBoxMap);
+
+        if (selectedFiles.isEmpty()) {
             return new UploadResult(0, 0, false);
         }
 
-        log("📤 Starting upload of " + selectedJsps.size() + " JSP file(s)...");
+        log("📤 Starting upload of " + selectedFiles.size() + " " + fileType + " file(s)...");
 
         int successCount = 0;
         int failCount = 0;
         boolean connectionLost = false;
 
-        for (String jspRelativePath : selectedJsps) {
-            if (!sftpManager.isConnected()) {
+        for (String fileName : selectedFiles) {
+            if (!connectionManager.isConnected()) {
                 log("✗ Connection lost during upload!");
                 connectionLost = true;
-                failCount += (selectedJsps.size() - successCount - failCount);
+                failCount += (selectedFiles.size() - successCount - failCount);
                 break;
             }
 
             try {
-                String localPath = project.getLocalJspPath() + File.separator +
-                        jspRelativePath.replace("/", File.separator);
-                String remotePath = project.getRemoteJspPath() + "/" + jspRelativePath;
+                String localPath = pathResolver.getLocalPath(fileName);
+                String remotePath = pathResolver.getRemotePath(fileName);
 
-                if (!uploadFile(localPath, remotePath, jspRelativePath)) {
+                if (!uploadSingleFile(localPath, remotePath, fileName)) {
                     failCount++;
                     continue;
                 }
 
                 successCount++;
-
-                // Calculate indentation for JSP files
-                int depth = jspRelativePath.split("/").length - 1;
-                int indent = 15 + (depth * 20);
-                uncheckAndUnhighlightFile(jspCheckBoxMap, jspRelativePath, indent);
+                resetCheckbox(checkBoxMap, fileName, pathResolver.getCheckboxIndent(fileName));
 
             } catch (Exception e) {
-                log("  ✗ Failed to upload " + jspRelativePath + ": " + e.getMessage());
+                log("  ✗ Failed to upload " + fileName + ": " + e.getMessage());
                 failCount++;
 
                 if (isConnectionError(e)) {
                     log("⚠ Connection error detected, stopping upload...");
                     connectionLost = true;
-                    failCount += (selectedJsps.size() - successCount - failCount);
+                    failCount += (selectedFiles.size() - successCount - failCount);
                     break;
                 }
             }
         }
 
-        logUploadSummary("JSPs", successCount, failCount);
+        logUploadSummary(fileType, successCount, failCount);
         return new UploadResult(successCount, failCount, connectionLost);
     }
 
-    private boolean uploadFile(String localPath, String remotePath, String displayName) {
+    private boolean uploadSingleFile(String localPath, String remotePath, String displayName) {
         File localFile = new File(localPath);
 
         if (!localFile.exists()) {
@@ -156,11 +171,10 @@ public class FileUploadService {
         }
 
         try {
-            log("  ↗ Uploading: " + displayName + " (" + formatFileSize(localFile.length()) + ")");
-            sftpManager.uploadFile(localPath, remotePath);
+            log("  ↗ Uploading: " + displayName + " (" + FileSizeFormatter.format(localFile.length()) + ")");
+            connectionManager.getSftpManager().uploadFile(localPath, remotePath);
             log("  ✓ Uploaded: " + displayName);
             return true;
-
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Failed to upload " + displayName, e);
             throw new RuntimeException(e);
@@ -174,16 +188,24 @@ public class FileUploadService {
                 .toList();
     }
 
-    private void uncheckAndUnhighlightFile(Map<String, CheckBox> checkBoxMap, String fileName, int basePadding) {
+    /**
+     * Resetează checkbox-ul după upload reușit:
+     * deselectează și aplică stilul default (elimină highlight-ul de "modified").
+     */
+    private void resetCheckbox(Map<String, CheckBox> checkBoxMap, String fileName, int indent) {
         Platform.runLater(() -> {
             CheckBox checkBox = checkBoxMap.get(fileName);
             if (checkBox != null) {
                 checkBox.setSelected(false);
-                checkBox.setStyle("-fx-font-size: 13px; -fx-padding: 5px 5px 5px " + basePadding + "px; -fx-text-fill: -color-fg-default;");
+                checkBox.setStyle(String.format(DEFAULT_CHECKBOX_STYLE, indent));
             }
         });
     }
 
+    /**
+     * Detecție simplă a erorilor de conexiune bazată pe mesajul excepției.
+     * Suficient pentru JSch care include "connection" sau "session" în mesaje.
+     */
     private boolean isConnectionError(Exception e) {
         String msg = e.getMessage();
         return msg != null && (msg.contains("connection") || msg.contains("session"));
@@ -192,16 +214,6 @@ public class FileUploadService {
     private void logUploadSummary(String fileType, int successCount, int failCount) {
         log("--------------------------------");
         log("✓ " + fileType + ": " + successCount + " successful, " + failCount + " failed");
-    }
-
-    private String formatFileSize(long bytes) {
-        if (bytes < 1024) {
-            return bytes + " B";
-        } else if (bytes < 1024 * 1024) {
-            return String.format("%.2f KB", bytes / 1024.0);
-        } else {
-            return String.format("%.2f MB", bytes / (1024.0 * 1024.0));
-        }
     }
 
     private void log(String message) {

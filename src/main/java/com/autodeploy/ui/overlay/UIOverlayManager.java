@@ -3,6 +3,7 @@ package com.autodeploy.ui.overlay;
 import io.github.palexdev.materialfx.controls.MFXButton;
 import javafx.application.Platform;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.Label;
 import javafx.scene.control.ProgressIndicator;
 import javafx.scene.effect.GaussianBlur;
@@ -11,23 +12,66 @@ import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 
 /**
- * Service for managing UI overlays (blur effects, loading indicators, etc.)
+ * Gestionează overlay-urile modale ale aplicației: blur de fundal,
+ * loading indicator și dialoguri de reconectare.
+ * <p>
+ * Funcționare: aplică un {@link GaussianBlur} pe {@code contentPane} (conținutul principal)
+ * și suprapune un {@link StackPane} semi-transparent cu conținut centrat.
+ * Necesită ca root-ul ferestrei să fie un {@link StackPane} cu contentPane ca prim copil.
+ * <p>
+ * Overlay-uri disponibile:
+ * <ul>
+ *   <li>{@link #showSimpleBlur()} — blur fără conținut (ex: în timpul încărcării inițiale)</li>
+ *   <li>{@link #showLoadingOverlay} — progress indicator + mesaj</li>
+ *   <li>{@link #showReconnectOverlay} — dialog "Connection Lost" cu Reconnect/Close</li>
+ *   <li>{@link #showReconnectFailure} — dialog de eroare cu Try Again/Close</li>
+ * </ul>
+ * <p>
+ * <b>Maxim un overlay activ:</b> afișarea unui overlay nou îl elimină pe cel anterior.
+ * Toate metodele sunt thread-safe — pot fi apelate din orice thread.
  */
 public class UIOverlayManager {
 
     private static final double BLUR_RADIUS = 10.0;
-    private static final String OVERLAY_STYLE = "-fx-background-color: rgba(0, 0, 0, 0.4);";
-    private static final String OVERLAY_DARK_STYLE = "-fx-background-color: rgba(0, 0, 0, 0.5);";
 
+    private static final String OVERLAY_STYLE =
+            "-fx-background-color: rgba(0, 0, 0, 0.4);";
+    private static final String OVERLAY_DARK_STYLE =
+            "-fx-background-color: rgba(0, 0, 0, 0.5);";
     private static final String BOX_STYLE =
             "-fx-background-color: -color-bg-default; " +
                     "-fx-background-radius: 12px; " +
                     "-fx-padding: 40px; " +
                     "-fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 20, 0, 0, 5);";
 
-    private final StackPane rootPane;
-    private final VBox contentPane;
+    private static final String PRIMARY_BTN_STYLE =
+            "-fx-background-color: -color-accent-emphasis; " +
+                    "-fx-text-fill: white; " +
+                    "-fx-font-size: 14px; " +
+                    "-fx-font-weight: bold; " +
+                    "-fx-cursor: hand; " +
+                    "-fx-background-radius: 6px;";
+    private static final String SECONDARY_BTN_STYLE =
+            "-fx-background-color: -color-bg-subtle; " +
+                    "-fx-text-fill: -color-fg-default; " +
+                    "-fx-font-size: 14px; " +
+                    "-fx-font-weight: bold; " +
+                    "-fx-cursor: hand; " +
+                    "-fx-background-radius: 6px; " +
+                    "-fx-border-color: -color-border-default; " +
+                    "-fx-border-width: 1.5px;";
 
+    private static final double BUTTON_WIDTH = 120;
+    private static final double BUTTON_HEIGHT = 40;
+
+    /**
+     * Root-ul ferestrei (StackPane) — overlay-ul se adaugă ca copil peste contentPane.
+     * Structura: rootPane → [contentPane, currentOverlay]
+     */
+    private final StackPane rootPane;
+    /** Conținutul principal al ferestrei — primește efectul de blur. */
+    private final VBox contentPane;
+    /** Overlay-ul curent (sau null dacă nu e activ). Maxim unul la un moment dat. */
     private StackPane currentOverlay;
 
     public UIOverlayManager(StackPane rootPane, VBox contentPane) {
@@ -35,184 +79,57 @@ public class UIOverlayManager {
         this.contentPane = contentPane;
     }
 
-    private void runOnFxThread(Runnable action) {
-        if (Platform.isFxApplicationThread()) {
-            action.run();
-        } else {
-            Platform.runLater(action);
-        }
-    }
-
-    /**
-     * Show simple blur overlay (no content)
-     */
     public void showSimpleBlur() {
-        runOnFxThread(() -> {
-            // Guard against null panes (can happen during early initialize timing)
-            if (contentPane == null || rootPane == null) {
-                return;
-            }
-
-            // Don't hide overlay if we are just replacing it or stacking it
-            // But for simple blur, we usually want to clear previous content
-            if (currentOverlay != null) {
-                rootPane.getChildren().remove(currentOverlay);
-            }
-
-            GaussianBlur blur = new GaussianBlur(BLUR_RADIUS);
-            contentPane.setEffect(blur);
-
-            currentOverlay = new StackPane();
-            currentOverlay.setStyle(OVERLAY_STYLE);
-
-            rootPane.getChildren().add(currentOverlay);
-        });
+        runOnFxThread(() -> showOverlay(OVERLAY_STYLE));
     }
 
-    /**
-     * Show loading overlay with progress indicator
-     */
     public void showLoadingOverlay(String title, String subtitle) {
         runOnFxThread(() -> {
-            // Guard against null panes
-            if (contentPane == null || rootPane == null) {
-                return;
+            StackPane overlay = showOverlay(OVERLAY_STYLE);
+            if (overlay != null) {
+                overlay.getChildren().add(createLoadingBox(title, subtitle));
             }
-
-            if (currentOverlay != null) {
-                rootPane.getChildren().remove(currentOverlay);
-                currentOverlay = null;
-            }
-
-            GaussianBlur blur = new GaussianBlur(BLUR_RADIUS);
-            contentPane.setEffect(blur);
-
-            currentOverlay = new StackPane();
-            currentOverlay.setStyle(OVERLAY_STYLE);
-
-            VBox loadingBox = createLoadingBox(title, subtitle);
-            currentOverlay.getChildren().add(loadingBox);
-
-            rootPane.getChildren().add(currentOverlay);
         });
     }
 
-    /**
-     * Show reconnect overlay with action buttons
-     */
     public void showReconnectOverlay(String serverName, String serverHost,
                                      Runnable onReconnect, Runnable onClose) {
         runOnFxThread(() -> {
-            if (contentPane == null || rootPane == null) {
-                return;
+            StackPane overlay = showOverlay(OVERLAY_DARK_STYLE);
+            if (overlay != null) {
+                Label serverLabel = createLabel(
+                        serverName + " (" + serverHost + ")",
+                        "-fx-font-size: 13px; -fx-text-fill: -color-fg-muted;");
+
+                overlay.getChildren().add(createDialogBox(
+                        "Connection Lost",
+                        "The connection to the server was lost.",
+                        "Reconnect", onReconnect,
+                        onClose,
+                        serverLabel
+                ));
             }
-
-            if (currentOverlay != null) {
-                rootPane.getChildren().remove(currentOverlay);
-                currentOverlay = null;
-            }
-
-            GaussianBlur blur = new GaussianBlur(BLUR_RADIUS);
-            contentPane.setEffect(blur);
-
-            currentOverlay = new StackPane();
-            currentOverlay.setStyle(OVERLAY_DARK_STYLE);
-
-            VBox reconnectBox = createReconnectBox(serverName, serverHost, onReconnect, onClose);
-            currentOverlay.getChildren().add(reconnectBox);
-
-            rootPane.getChildren().add(currentOverlay);
         });
     }
 
-    /**
-     * Show reconnect overlay with a specific error message
-     */
     public void showReconnectFailure(String title, String errorMessage,
                                      Runnable onReconnect, Runnable onClose) {
         runOnFxThread(() -> {
-            if (contentPane == null || rootPane == null) return;
-
-            if (currentOverlay != null) {
-                rootPane.getChildren().remove(currentOverlay);
-                currentOverlay = null;
+            StackPane overlay = showOverlay(OVERLAY_DARK_STYLE);
+            if (overlay != null) {
+                overlay.getChildren().add(createDialogBox(
+                        title,
+                        errorMessage,
+                        "Try Again", onReconnect,
+                        onClose
+                ));
             }
-
-            if (contentPane.getEffect() == null) {
-                GaussianBlur blur = new GaussianBlur(BLUR_RADIUS);
-                contentPane.setEffect(blur);
-            }
-
-            currentOverlay = new StackPane();
-            currentOverlay.setStyle(OVERLAY_DARK_STYLE);
-
-            VBox reconnectBox = createReconnectBoxWithError(title, errorMessage, onReconnect, onClose);
-            currentOverlay.getChildren().add(reconnectBox);
-
-            rootPane.getChildren().add(currentOverlay);
         });
     }
 
-    private VBox createReconnectBoxWithError(String title, String errorMessage,
-                                             Runnable onReconnect, Runnable onClose) {
-        VBox box = new VBox(20);
-        box.setAlignment(Pos.CENTER);
-        box.setStyle(BOX_STYLE);
-        box.setMaxWidth(400);
-
-        Label warningIcon = new Label("⚠️");
-        warningIcon.setStyle("-fx-font-size: 48px;");
-
-        Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #cf222e;");
-
-        Label errorLabel = new Label(errorMessage);
-        errorLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: -color-fg-default;");
-        errorLabel.setWrapText(true);
-        errorLabel.setMaxWidth(320);
-        errorLabel.setAlignment(Pos.CENTER);
-
-        HBox buttonBox = new HBox(15);
-        buttonBox.setAlignment(Pos.CENTER);
-
-        MFXButton reconnectBtn = new MFXButton("Try Again");
-        reconnectBtn.setStyle("-fx-background-color: -color-accent-emphasis; " +
-                "-fx-text-fill: white; " +
-                "-fx-font-size: 14px; " +
-                "-fx-font-weight: bold; " +
-                "-fx-cursor: hand; " +
-                "-fx-background-radius: 6px;");
-        reconnectBtn.setPrefWidth(120);
-        reconnectBtn.setPrefHeight(40);
-        reconnectBtn.setOnAction(e -> onReconnect.run());
-
-        MFXButton closeBtn = new MFXButton("Close");
-        closeBtn.setStyle("-fx-background-color: -color-bg-subtle; " +
-                "-fx-text-fill: -color-fg-default; " +
-                "-fx-font-size: 14px; " +
-                "-fx-font-weight: bold; " +
-                "-fx-cursor: hand; " +
-                "-fx-background-radius: 6px; " +
-                "-fx-border-color: -color-border-default; " +
-                "-fx-border-width: 1.5px;");
-        closeBtn.setPrefWidth(120);
-        closeBtn.setPrefHeight(40);
-        closeBtn.setOnAction(e -> onClose.run());
-
-        buttonBox.getChildren().addAll(reconnectBtn, closeBtn);
-
-        box.getChildren().addAll(warningIcon, titleLabel, errorLabel, buttonBox);
-        return box;
-    }
-
-    /**
-     * Hide overlay and remove blur effect
-     */
     public void hideOverlay() {
         runOnFxThread(() -> {
-            if (contentPane == null || rootPane == null) {
-                return;
-            }
+            if (contentPane == null || rootPane == null) return;
 
             contentPane.setEffect(null);
 
@@ -223,84 +140,118 @@ public class UIOverlayManager {
         });
     }
 
-    private VBox createLoadingBox(String title, String subtitle) {
-        VBox box = new VBox(20);
-        box.setAlignment(Pos.CENTER);
-        box.setStyle(BOX_STYLE);
-        box.setMaxWidth(350);
-        box.setMaxHeight(200);
+    /**
+     * Creează overlay-ul de bază: elimină cel anterior (dacă există),
+     * aplică blur pe conținut, și adaugă un StackPane semi-transparent.
+     *
+     * @return overlay-ul creat (pentru a adăuga conținut), sau null dacă pane-urile lipsesc
+     */
+    private StackPane showOverlay(String overlayStyle) {
+        if (contentPane == null || rootPane == null) return null;
 
-        ProgressIndicator progressIndicator = new ProgressIndicator();
-        progressIndicator.setPrefSize(60, 60);
+        if (currentOverlay != null) {
+            rootPane.getChildren().remove(currentOverlay);
+        }
 
-        Label titleLabel = new Label(title);
-        titleLabel.setStyle("-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: -color-fg-default;");
+        contentPane.setEffect(new GaussianBlur(BLUR_RADIUS));
 
-        Label subtitleLabel = new Label(subtitle);
-        subtitleLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: -color-fg-muted;");
+        currentOverlay = new StackPane();
+        currentOverlay.setStyle(overlayStyle);
+        rootPane.getChildren().add(currentOverlay);
 
-        box.getChildren().addAll(progressIndicator, titleLabel, subtitleLabel);
-
-        return box;
+        return currentOverlay;
     }
 
-    private VBox createReconnectBox(String serverName, String serverHost,
-                                    Runnable onReconnect, Runnable onClose) {
-        VBox box = new VBox(20);
-        box.setAlignment(Pos.CENTER);
-        box.setStyle(BOX_STYLE);
-        box.setMaxWidth(400);
+    private VBox createLoadingBox(String title, String subtitle) {
+        ProgressIndicator progress = new ProgressIndicator();
+        progress.setPrefSize(60, 60);
 
+        return createCenteredBox(350, 200,
+                progress,
+                createLabel(title, "-fx-font-size: 18px; -fx-font-weight: bold; -fx-text-fill: -color-fg-default;"),
+                createLabel(subtitle, "-fx-font-size: 14px; -fx-text-fill: -color-fg-muted;")
+        );
+    }
+
+    /**
+     * Creează un dialog box centrat cu: icon ⚠️, titlu, mesaj, noduri extra opționale,
+     * și o bară de butoane (primary + Close).
+     * Nodurile extra (ex: server info label) sunt inserate între mesaj și butoane.
+     */
+    private VBox createDialogBox(String title, String message,
+                                 String primaryBtnText, Runnable onPrimary,
+                                 Runnable onClose,
+                                 Node... extraNodes) {
         Label warningIcon = new Label("⚠️");
         warningIcon.setStyle("-fx-font-size: 48px;");
 
-        Label titleLabel = new Label("Connection Lost");
-        titleLabel.setStyle("-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #cf222e;");
+        Label titleLabel = createLabel(title,
+                "-fx-font-size: 20px; -fx-font-weight: bold; -fx-text-fill: #cf222e;");
 
-        Label messageLabel = new Label("The connection to the server was lost.");
-        messageLabel.setStyle("-fx-font-size: 14px; -fx-text-fill: -color-fg-default;");
+        Label messageLabel = createLabel(message,
+                "-fx-font-size: 14px; -fx-text-fill: -color-fg-default;");
         messageLabel.setWrapText(true);
         messageLabel.setMaxWidth(320);
         messageLabel.setAlignment(Pos.CENTER);
 
-        Label serverLabel = new Label(serverName + " (" + serverHost + ")");
-        serverLabel.setStyle("-fx-font-size: 13px; -fx-text-fill: -color-fg-muted;");
+        HBox buttonBox = createButtonBar(primaryBtnText, onPrimary, onClose);
 
-        HBox buttonBox = new HBox(15);
-        buttonBox.setAlignment(Pos.CENTER);
+        VBox box = createCenteredBox(400, -1, warningIcon, titleLabel, messageLabel);
 
-        MFXButton reconnectBtn = new MFXButton("Reconnect");
-        reconnectBtn.setStyle("-fx-background-color: -color-accent-emphasis; " +
-                "-fx-text-fill: white; " +
-                "-fx-font-size: 14px; " +
-                "-fx-font-weight: bold; " +
-                "-fx-cursor: hand; " +
-                "-fx-background-radius: 6px;");
-        reconnectBtn.setPrefWidth(120);
-        reconnectBtn.setPrefHeight(40);
-        reconnectBtn.setOnAction(e -> onReconnect.run());
+        for (Node node : extraNodes) {
+            box.getChildren().add(node);
+        }
 
-        MFXButton closeBtn = new MFXButton("Close");
-        closeBtn.setStyle("-fx-background-color: -color-bg-subtle; " +
-                "-fx-text-fill: -color-fg-default; " +
-                "-fx-font-size: 14px; " +
-                "-fx-font-weight: bold; " +
-                "-fx-cursor: hand; " +
-                "-fx-background-radius: 6px; " +
-                "-fx-border-color: -color-border-default; " +
-                "-fx-border-width: 1.5px;");
-        closeBtn.setPrefWidth(120);
-        closeBtn.setPrefHeight(40);
-        closeBtn.setOnAction(e -> onClose.run());
-
-        buttonBox.getChildren().addAll(reconnectBtn, closeBtn);
-
-        box.getChildren().addAll(warningIcon, titleLabel, messageLabel, serverLabel, buttonBox);
-
+        box.getChildren().add(buttonBox);
         return box;
     }
 
-    public boolean isOverlayShowing() {
-        return currentOverlay != null;
+    private HBox createButtonBar(String primaryText, Runnable onPrimary, Runnable onClose) {
+        MFXButton primaryBtn = createButton(primaryText, PRIMARY_BTN_STYLE);
+        primaryBtn.setOnAction(e -> onPrimary.run());
+
+        MFXButton closeBtn = createButton("Close", SECONDARY_BTN_STYLE);
+        closeBtn.setOnAction(e -> onClose.run());
+
+        HBox buttonBox = new HBox(15, primaryBtn, closeBtn);
+        buttonBox.setAlignment(Pos.CENTER);
+        return buttonBox;
+    }
+
+    private VBox createCenteredBox(double maxWidth, double maxHeight, Node... children) {
+        VBox box = new VBox(20);
+        box.setAlignment(Pos.CENTER);
+        box.setStyle(BOX_STYLE);
+        box.setMaxWidth(maxWidth);
+        if (maxHeight > 0) box.setMaxHeight(maxHeight);
+        box.getChildren().addAll(children);
+        return box;
+    }
+
+    private Label createLabel(String text, String style) {
+        Label label = new Label(text);
+        label.setStyle(style);
+        return label;
+    }
+
+    private MFXButton createButton(String text, String style) {
+        MFXButton button = new MFXButton(text);
+        button.setStyle(style);
+        button.setPrefWidth(BUTTON_WIDTH);
+        button.setPrefHeight(BUTTON_HEIGHT);
+        return button;
+    }
+
+    /**
+     * Asigură execuția pe JavaFX Application Thread.
+     * Toate metodele publice trec prin asta — overlay-ul poate fi
+     * declanșat din orice thread (ex: connection lost pe background thread).
+     */
+    private void runOnFxThread(Runnable action) {
+        if (Platform.isFxApplicationThread()) {
+            action.run();
+        } else {
+            Platform.runLater(action);
+        }
     }
 }

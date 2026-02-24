@@ -21,5 +21,5 @@
   "port" : 22,
   "username" : "dev",
   "password" : "dev",
-  "restartManagerScript" : "/nodel/testUpload/anotherTestFolder/restart_manager.sh"
+  "restartManagerScript" : "/nodel/RestartManager/restart_manager.sh"
 } ]

@@ -2,10 +2,10 @@ package com.autodeploy.service.restart;
 
 import com.autodeploy.core.config.ApplicationConfig;
 import com.autodeploy.domain.manager.RestartManager;
-import com.autodeploy.domain.manager.RestartManager.RestartStatus;
+import com.autodeploy.domain.model.RestartStatus;
+import com.autodeploy.infrastructure.connection.ConnectionManager;
 import com.autodeploy.notification.RestartNotificationHandler;
 import com.autodeploy.domain.model.Server;
-import com.autodeploy.infrastructure.sftp.SftpManager;
 import javafx.concurrent.Task;
 
 import java.util.ArrayList;
@@ -13,50 +13,63 @@ import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
+/**
+ * Fațadă (Facade) peste {@link RestartManager} și {@link RestartNotificationHandler}.
+ * <p>
+ * Simplifică interacțiunea UI-ului cu sistemul de restart:
+ * <ul>
+ *   <li>Inițializare lazy — restartManager + notificationHandler sunt create la {@link #initialize()},
+ *       nu în constructor (depind de conexiunea activă)</li>
+ *   <li>Polling management — start/stop cu interval fix de 2s</li>
+ *   <li>Timer UI — formatează timpul scurs bazat pe {@code active_restart.started_at} de pe server</li>
+ *   <li>Listener buffering — listener-ii adăugați înainte de initialize() sunt reținuți
+ *       și atașați automat după inițializare</li>
+ * </ul>
+ * <p>
+ * <b>Notă despre timer:</b> Timpul de restart se bazează exclusiv pe timestamp-ul serverului
+ * ({@code active_restart.started_at}), NU pe un timer local. Astfel timerul rămâne corect
+ * chiar dacă aplicația e repornită în timpul unui restart.
+ */
 public class RestartService {
+
     private final Server server;
-    private final SftpManager sftpManager;
+    private final ConnectionManager connectionManager;
     private final Consumer<String> logger;
 
     private RestartManager restartManager;
     private RestartNotificationHandler notificationHandler;
 
-    private Consumer<Boolean> buttonStateCallback;
-    private Runnable onRestartStarted;
-    private Runnable onRestartCompleted;
-    private long restartStartTime = 0;
-    private String originalButtonText = "Restart Server";
+    /** Ultimul status primit de la server — folosit de timer și isRestarting(). */
+    private volatile RestartStatus latestStatus = null;
 
-    // ✅ FIX 1: A list to hold listeners that try to register before we are ready
+    /**
+     * Listener-i adăugați înainte de initialize().
+     * RestartManager nu există încă, deci îi reținem temporar
+     * și îi atașăm în {@link #attachPendingListeners()}.
+     */
     private final List<Consumer<RestartStatus>> pendingListeners = new ArrayList<>();
 
-    public RestartService(Server server, SftpManager sftpManager, Consumer<String> logger) {
+    public RestartService(Server server, ConnectionManager connectionManager, Consumer<String> logger) {
         this.server = server;
-        this.sftpManager = sftpManager;
+        this.connectionManager = connectionManager;
         this.logger = logger;
     }
 
+    /**
+     * Inițializare lazy — creează RestartManager și NotificationHandler.
+     * Separat de constructor deoarece depinde de conexiunea activă și de username-ul rezolvat.
+     *
+     * @return true dacă inițializarea a reușit
+     */
     public boolean initialize() {
         try {
-            // Read username from application configuration
-            String currentUser = ApplicationConfig.getInstance().getUsername();
-            if (currentUser == null || currentUser.trim().isEmpty() || "null".equalsIgnoreCase(currentUser.trim())) {
-                // Fallback to OS user if config is missing or placeholder
-                currentUser = System.getProperty("user.name");
-            }
+            String currentUser = resolveCurrentUser();
 
-            this.restartManager = new RestartManager(server, sftpManager, currentUser);
+            this.restartManager = new RestartManager(server, connectionManager, currentUser);
             this.notificationHandler = new RestartNotificationHandler(restartManager, currentUser, logger);
 
             notificationHandler.setUiUpdateCallback(this::handleStatusUpdate);
-
-            // ✅ FIX 2: Attach the saved listeners now that restartManager exists
-            synchronized (pendingListeners) {
-                for (Consumer<RestartStatus> listener : pendingListeners) {
-                    restartManager.addListener(listener);
-                }
-                pendingListeners.clear();
-            }
+            attachPendingListeners();
 
             return true;
         } catch (Exception e) {
@@ -77,20 +90,10 @@ public class RestartService {
         }
     }
 
-    public void setOnButtonStateChanged(Consumer<Boolean> callback) {
-        this.buttonStateCallback = callback;
-    }
-
-    public void setOnRestartStarted(Runnable callback) {
-        this.onRestartStarted = callback;
-    }
-
-    public void setOnRestartCompleted(Runnable callback) {
-        this.onRestartCompleted = callback;
-    }
-
     /**
-     * ✅ FIX 3: If manager is null, save the listener for later!
+     * Adaugă un listener pentru schimbări de status.
+     * Dacă RestartManager nu e încă inițializat, listener-ul e buffered
+     * și atașat automat la {@link #initialize()}.
      */
     public void addStatusListener(Consumer<RestartStatus> listener) {
         if (restartManager != null) {
@@ -98,38 +101,6 @@ public class RestartService {
         } else {
             synchronized (pendingListeners) {
                 pendingListeners.add(listener);
-            }
-        }
-    }
-
-    public void removeStatusListener(Consumer<RestartStatus> listener) {
-        if (restartManager != null) {
-            restartManager.removeListener(listener);
-        } else {
-            synchronized (pendingListeners) {
-                pendingListeners.remove(listener);
-            }
-        }
-    }
-
-    private void handleStatusUpdate(RestartStatus status) {
-        if (status == null) return;
-
-        boolean isBusy = status.isPending() || status.isExecuting() || status.isApproved();
-
-        if (buttonStateCallback != null) {
-            buttonStateCallback.accept(isBusy);
-        }
-
-        if (status.isExecuting()) {
-            if (restartStartTime == 0) {
-                restartStartTime = System.currentTimeMillis();
-                if (onRestartStarted != null) onRestartStarted.run();
-            }
-        } else if (status.isCompleted() || status.isIdle() || status.isRejected()) {
-            if (restartStartTime != 0) {
-                restartStartTime = 0;
-                if (onRestartCompleted != null) onRestartCompleted.run();
             }
         }
     }
@@ -143,10 +114,30 @@ public class RestartService {
         };
     }
 
+    /**
+     * Returnează timpul scurs de la începutul restartului, formatat ca (MM:SS).
+     * <p>
+     * Se bazează exclusiv pe {@code active_restart.started_at} din JSON-ul serverului,
+     * NU pe un timer local. Astfel:
+     * <ul>
+     *   <li>Timerul persistă între reporniri ale aplicației</li>
+     *   <li>Timerul e corect chiar dacă statusul cererii devine "rejected"
+     *       (restartul fizic continuă independent)</li>
+     *   <li>Nu există drift între client și server</li>
+     * </ul>
+     *
+     * @return "(MM:SS)" sau "" dacă nu există restart activ
+     */
     public String getFormattedElapsedTime() {
-        if (restartStartTime == 0) return "";
+        if (latestStatus == null || !latestStatus.hasActiveRestart()) {
+            return "";
+        }
 
-        long elapsedMillis = System.currentTimeMillis() - restartStartTime;
+        long startedAtEpoch = latestStatus.getActiveRestart().getStartedAt();
+        long elapsedMillis = System.currentTimeMillis() - (startedAtEpoch * 1000);
+
+        if (elapsedMillis < 0) elapsedMillis = 0;
+
         long seconds = TimeUnit.MILLISECONDS.toSeconds(elapsedMillis);
         long minutes = seconds / 60;
         seconds = seconds % 60;
@@ -154,8 +145,12 @@ public class RestartService {
         return String.format("(%02d:%02d)", minutes, seconds);
     }
 
-    public String getOriginalButtonText() {
-        return originalButtonText;
+    /**
+     * Serverul este în restart dacă {@code active_restart} există pe server.
+     * Independent de statusul cererii (poate fi "rejected" dar restartul fizic continuă).
+     */
+    public boolean isRestarting() {
+        return latestStatus != null && latestStatus.hasActiveRestart();
     }
 
     public void shutdown() {
@@ -163,5 +158,51 @@ public class RestartService {
         if (notificationHandler != null) {
             notificationHandler.shutdown();
         }
+    }
+
+    /**
+     * Callback de la NotificationHandler — salvează ultimul status.
+     * Timer-ul și isRestarting() folosesc direct acest status.
+     * Toată logica de timp se bazează pe active_restart.started_at din JSON,
+     * fără manipulare locală de timestamp-uri.
+     */
+    private void handleStatusUpdate(RestartStatus status) {
+        this.latestStatus = status;
+    }
+
+    private void attachPendingListeners() {
+        synchronized (pendingListeners) {
+            for (Consumer<RestartStatus> listener : pendingListeners) {
+                restartManager.addListener(listener);
+            }
+            pendingListeners.clear();
+        }
+    }
+
+    /**
+     * Rezolvă username-ul curent: preferă cel din config (setat manual de user),
+     * fallback pe system property (user.name) dacă nu e configurat.
+     */
+    private String resolveCurrentUser() {
+        String configUser = ApplicationConfig.getInstance().getUsername();
+        if (configUser != null && !configUser.trim().isEmpty()
+                && !"null".equalsIgnoreCase(configUser.trim())) {
+            return configUser.trim();
+        }
+        return System.getProperty("user.name");
+    }
+
+    public Long getStatusActiveStartedAt() {
+        if (latestStatus != null && latestStatus.getActiveRestart() != null) {
+            return latestStatus.getActiveRestart().getStartedAt();
+        }
+        return null;
+    }
+
+    public Long getStatusActiveRequestedAt() {
+        if (latestStatus != null && latestStatus.getActiveRestart() != null) {
+            return latestStatus.getActiveRestart().getRequestedAt();
+        }
+        return null;
     }
 }

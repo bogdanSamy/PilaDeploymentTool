@@ -1,215 +1,201 @@
 package com.autodeploy.service.scanner;
 
 import javafx.application.Platform;
+
 import java.io.File;
-import java.nio.file.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
+/**
+ * Monitorizează un director pentru fișiere cu o anumită extensie prin polling.
+ * Detectează fișiere noi (ADDED), modificate (MODIFIED) și șterse (DELETED).
+ * <p>
+ * Implementare bazată pe polling (comparare timestamp-uri) în loc de
+ * {@code java.nio.file.WatchService} deoarece:
+ * <ul>
+ *   <li>WatchService nu funcționează reliable pe network drives (NFS, SMB)</li>
+ *   <li>WatchService pe macOS folosește polling oricum (fără kqueue support nativ)</li>
+ *   <li>Polling la 2s e suficient de responsive pentru un workflow de development</li>
+ * </ul>
+ * <p>
+ * Notificările sunt livrate pe JavaFX Application Thread prin {@code Platform.runLater()}.
+ * <p>
+ * <b>Thread safety:</b> {@code fileTimestamps} e ConcurrentHashMap — safe pentru
+ * citire din UI thread și scriere din watch thread.
+ */
 public class FileWatcher {
+
+    private static final Logger LOGGER = Logger.getLogger(FileWatcher.class.getName());
+    private static final int DEFAULT_POLL_INTERVAL_MS = 2000;
 
     private final Path directoryPath;
     private final String fileExtension;
     private final Consumer<FileChangeEvent> changeListener;
-    private final Map<String, Long> fileTimestamps;
     private final boolean recursive;
+    private final int pollIntervalMs;
+
+    /**
+     * Snapshot-ul curent al fișierelor monitorizate: cale relativă → lastModified.
+     * Folosit ca bază de comparație la fiecare poll cycle.
+     */
+    private final Map<String, Long> fileTimestamps = new ConcurrentHashMap<>();
     private Thread watchThread;
     private volatile boolean running = false;
 
-    public FileWatcher(String directory, String extension, Consumer<FileChangeEvent> listener) {
-        this(directory, extension, listener, false);
+    public FileWatcher(String directory, String extension,
+                       Consumer<FileChangeEvent> listener, boolean recursive) {
+        this(directory, extension, listener, recursive, DEFAULT_POLL_INTERVAL_MS);
     }
 
-    public FileWatcher(String directory, String extension, Consumer<FileChangeEvent> listener, boolean recursive) {
+    public FileWatcher(String directory, String extension,
+                       Consumer<FileChangeEvent> listener, boolean recursive,
+                       int pollIntervalMs) {
         this.directoryPath = Paths.get(directory);
         this.fileExtension = extension;
         this.changeListener = listener;
-        this.fileTimestamps = new ConcurrentHashMap<>();
         this.recursive = recursive;
+        this.pollIntervalMs = pollIntervalMs;
     }
 
+    /**
+     * Pornește monitoring-ul. Scan-ul inițial populează snapshot-ul
+     * fără a genera notificări (fișierele existente nu sunt "noi").
+     */
     public void start() {
-        if (running) {
-            return;
-        }
-
+        if (running) return;
         running = true;
 
-        // Initial scan
-        scanDirectory();
+        collectFiles(directoryPath.toFile(), "").forEach(
+                entry -> fileTimestamps.put(entry.getKey(), entry.getValue())
+        );
 
-        // Start watch thread
-        watchThread = new Thread(this::watchLoop, "FileWatcher-" + fileExtension);
+        watchThread = new Thread(this::watchLoop,
+                "FileWatcher-" + fileExtension + "-" + directoryPath.getFileName());
         watchThread.setDaemon(true);
         watchThread.start();
 
-        System.out.println("✓ Started watching: " + directoryPath + " for *" + fileExtension + (recursive ? " (recursive)" : ""));
+        LOGGER.info("Started watching: " + directoryPath + " for *" + fileExtension
+                + (recursive ? " (recursive)" : ""));
     }
 
     public void stop() {
         running = false;
         if (watchThread != null) {
             watchThread.interrupt();
+            watchThread = null;
         }
-        System.out.println("✓ Stopped watching: " + directoryPath);
-    }
-
-    private void scanDirectory() {
-        File directory = directoryPath.toFile();
-        if (!directory.exists() || !directory.isDirectory()) {
-            System.err.println("⚠ Directory not found: " + directoryPath);
-            return;
-        }
-
-        if (recursive) {
-            scanDirectoryRecursive(directory, "");
-        } else {
-            File[] files = directory.listFiles((dir, name) -> name.toLowerCase().endsWith(fileExtension));
-            if (files != null) {
-                for (File file : files) {
-                    fileTimestamps.put(file.getName(), file.lastModified());
-                }
-            }
-        }
-    }
-
-    private void scanDirectoryRecursive(File directory, String relativePath) {
-        File[] files = directory.listFiles();
-        if (files == null) {
-            return;
-        }
-
-        for (File file : files) {
-            if (file.isDirectory()) {
-                String newRelativePath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
-                scanDirectoryRecursive(file, newRelativePath);
-            } else if (file.getName().toLowerCase().endsWith(fileExtension)) {
-                String fullPath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
-                fileTimestamps.put(fullPath, file.lastModified());
-            }
-        }
+        LOGGER.info("Stopped watching: " + directoryPath);
     }
 
     private void watchLoop() {
         while (running) {
             try {
-                checkForChanges();
-                Thread.sleep(2000); // Check every 2 seconds
+                detectChanges();
+                Thread.sleep(pollIntervalMs);
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 break;
             } catch (Exception e) {
-                System.err.println("✗ Error in watch loop: " + e.getMessage());
+                LOGGER.log(Level.WARNING, "Error in watch loop", e);
             }
         }
     }
 
-    private void checkForChanges() {
+    /**
+     * Compară starea curentă a filesystem-ului cu snapshot-ul anterior.
+     * <p>
+     * Algoritmul în 3 pași:
+     * <ol>
+     *   <li>Scanează starea curentă → {@code currentFiles}</li>
+     *   <li>Compară cu {@code fileTimestamps}: fișierele noi (absent din snapshot)
+     *       → ADDED, fișierele cu timestamp mai mare → MODIFIED</li>
+     *   <li>Fișierele prezente în snapshot dar absente din currentFiles → DELETED</li>
+     * </ol>
+     */
+    private void detectChanges() {
         File directory = directoryPath.toFile();
-        if (!directory.exists() || !directory.isDirectory()) {
-            return;
-        }
+        if (!directory.exists() || !directory.isDirectory()) return;
 
         Map<String, Long> currentFiles = new HashMap<>();
+        collectFiles(directory, "").forEach(
+                entry -> currentFiles.put(entry.getKey(), entry.getValue())
+        );
 
-        if (recursive) {
-            scanForChangesRecursive(directory, "", currentFiles);
-        } else {
-            File[] files = directory.listFiles((dir, name) -> name.toLowerCase().endsWith(fileExtension));
-            if (files != null) {
-                for (File file : files) {
-                    currentFiles.put(file.getName(), file.lastModified());
-                }
-            }
-        }
-
-        // Check for new and modified files
         for (Map.Entry<String, Long> entry : currentFiles.entrySet()) {
             String fileName = entry.getKey();
             long lastModified = entry.getValue();
-
             Long previousTimestamp = fileTimestamps.get(fileName);
 
             if (previousTimestamp == null) {
-                // New file added
                 fileTimestamps.put(fileName, lastModified);
-                File file = new File(directoryPath.toFile(), fileName);
-                notifyChange(new FileChangeEvent(file, fileName, FileChangeType.ADDED));
+                notifyChange(fileName, FileChangeType.ADDED);
             } else if (lastModified > previousTimestamp) {
-                // File modified
                 fileTimestamps.put(fileName, lastModified);
-                File file = new File(directoryPath.toFile(), fileName);
-                notifyChange(new FileChangeEvent(file, fileName, FileChangeType.MODIFIED));
+                notifyChange(fileName, FileChangeType.MODIFIED);
             }
         }
 
-        // Check for deleted files
-        Set<String> deletedFiles = new HashSet<>(fileTimestamps.keySet());
-        deletedFiles.removeAll(currentFiles.keySet());
+        Set<String> deleted = new HashSet<>(fileTimestamps.keySet());
+        deleted.removeAll(currentFiles.keySet());
 
-        for (String deletedFile : deletedFiles) {
+        for (String deletedFile : deleted) {
             fileTimestamps.remove(deletedFile);
-            File file = new File(directoryPath.toFile(), deletedFile);
-            notifyChange(new FileChangeEvent(file, deletedFile, FileChangeType.DELETED));
+            notifyChange(deletedFile, FileChangeType.DELETED);
         }
     }
 
-    private void scanForChangesRecursive(File directory, String relativePath, Map<String, Long> currentFiles) {
+    /**
+     * Colectează recursiv (dacă {@code recursive=true}) toate fișierele cu extensia potrivită.
+     * Returnează perechi (relativePath → lastModified) pentru comparare cu snapshot-ul.
+     */
+    private List<Map.Entry<String, Long>> collectFiles(File directory, String relativePath) {
+        List<Map.Entry<String, Long>> result = new ArrayList<>();
+
         File[] files = directory.listFiles();
-        if (files == null) {
-            return;
-        }
+        if (files == null) return result;
 
         for (File file : files) {
-            if (file.isDirectory()) {
-                String newRelativePath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
-                scanForChangesRecursive(file, newRelativePath, currentFiles);
-            } else if (file.getName().toLowerCase().endsWith(fileExtension)) {
-                String fullPath = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
-                currentFiles.put(fullPath, file.lastModified());
+            String path = relativePath.isEmpty() ? file.getName() : relativePath + "/" + file.getName();
+
+            if (file.isDirectory() && recursive) {
+                result.addAll(collectFiles(file, path));
+            } else if (file.isFile() && file.getName().toLowerCase().endsWith(fileExtension)) {
+                result.add(Map.entry(path, file.lastModified()));
             }
         }
+
+        return result;
     }
 
-    private void notifyChange(FileChangeEvent event) {
+    private void notifyChange(String relativePath, FileChangeType type) {
         Platform.runLater(() -> {
             try {
-                changeListener.accept(event);
+                changeListener.accept(new FileChangeEvent(relativePath, type));
             } catch (Exception e) {
-                System.err.println("✗ Error in change listener: " + e.getMessage());
+                LOGGER.log(Level.WARNING, "Error in change listener", e);
             }
         });
     }
 
+    public enum FileChangeType {
+        ADDED, MODIFIED, DELETED
+    }
+
     public static class FileChangeEvent {
-        private final File file;
         private final String relativePath;
         private final FileChangeType type;
 
-        public FileChangeEvent(File file, String relativePath, FileChangeType type) {
-            this.file = file;
+        public FileChangeEvent(String relativePath, FileChangeType type) {
             this.relativePath = relativePath;
             this.type = type;
         }
 
-        public File getFile() {
-            return file;
-        }
-
-        public String getRelativePath() {
-            return relativePath;
-        }
-
-        public FileChangeType getType() {
-            return type;
-        }
-
-        public String getFileName() {
-            return file.getName();
-        }
-    }
-
-    public enum FileChangeType {
-        ADDED, MODIFIED, DELETED
+        public String getRelativePath() { return relativePath; }
+        public FileChangeType getType() { return type; }
     }
 }
