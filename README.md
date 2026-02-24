@@ -212,15 +212,18 @@ This ensures:
 
 ## 📸 Screenshots
 
-<!-- Add your screenshots here -->
-<!-- 
-![Main Window](docs/screenshots/main-window.png)
-![Build Console](docs/screenshots/build-console.png)
-![Restart Notification](docs/screenshots/restart-notification.png)
-![Restart Pending](docs/screenshots/restart-pending.png)
--->
+[Selection window] <img width="636" height="864" alt="selection" src="https://github.com/user-attachments/assets/2d9d8be2-4130-4468-9579-b757ffe98b00" />
 
-*Screenshots coming soon*
+[Main Window] <img width="643" height="749" alt="deployment" src="https://github.com/user-attachments/assets/06348a53-8744-4efa-8226-8c2202061db0" />
+
+[Restart Request] <img width="645" height="947" alt="restart_request" src="https://github.com/user-attachments/assets/a606eca8-9a28-4924-9452-344a65a5cafe" />
+
+[Restart] <img width="640" height="938" alt="restart" src="https://github.com/user-attachments/assets/281684dd-eec9-46fc-9ab3-7bc281c226af" />
+
+[Restart Rejected] <img width="484" height="162" alt="restart_rejected" src="https://github.com/user-attachments/assets/8715db4a-c863-45c5-af75-be473c787e12" />
+
+[Custom Themes] <img width="641" height="801" alt="Custom_Themes" src="https://github.com/user-attachments/assets/8975ae5e-ee66-4931-ad80-b9fddf4355fd" />
+
 
 ---
 
