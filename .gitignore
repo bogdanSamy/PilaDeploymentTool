@@ -36,3 +36,10 @@ build/
 
 ### Mac OS ###
 .DS_Store
+
+projects.json.bak
+projects.json
+servers.json.bak
+servers.json
+
+app-config.properties
