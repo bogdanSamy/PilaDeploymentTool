@@ -212,18 +212,36 @@ This ensures:
 
 ## 📸 Screenshots
 
-[Selection window] <img width="636" height="864" alt="selection" src="https://github.com/user-attachments/assets/2d9d8be2-4130-4468-9579-b757ffe98b00" />
+### Selection Window
+Choose your project and server configuration before deployment.
 
-[Main Window] <img width="643" height="749" alt="deployment" src="https://github.com/user-attachments/assets/06348a53-8744-4efa-8226-8c2202061db0" />
+<img width="636" alt="selection" src="https://github.com/user-attachments/assets/2d9d8be2-4130-4468-9579-b757ffe98b00" />
 
-[Restart Request] <img width="645" height="947" alt="restart_request" src="https://github.com/user-attachments/assets/a606eca8-9a28-4924-9452-344a65a5cafe" />
+### Main Window
+Build console with real-time Ant output, file detection, and upload controls.
 
-[Restart] <img width="640" height="938" alt="restart" src="https://github.com/user-attachments/assets/281684dd-eec9-46fc-9ab3-7bc281c226af" />
+<img width="643" alt="deployment" src="https://github.com/user-attachments/assets/06348a53-8744-4efa-8226-8c2202061db0" />
 
-[Restart Rejected] <img width="484" height="162" alt="restart_rejected" src="https://github.com/user-attachments/assets/8715db4a-c863-45c5-af75-be473c787e12" />
+### Restart Request
+Confirmation dialog adapts to the current state — simple request, override, or request over active restart.
 
-[Custom Themes] <img width="641" height="801" alt="Custom_Themes" src="https://github.com/user-attachments/assets/8975ae5e-ee66-4931-ad80-b9fddf4355fd" />
+<img width="640" alt="restart" src="https://github.com/user-attachments/assets/281684dd-eec9-46fc-9ab3-7bc281c226af" />
 
+### Restart In Progress
+Button shows real-time elapsed timer based on server timestamps. All connected users see the same state.
+
+<img width="645" alt="restart_request" src="https://github.com/user-attachments/assets/a606eca8-9a28-4924-9452-344a65a5cafe" />
+
+
+### Restart Rejected
+Toast notification when a teammate rejects the restart. If a previous restart was running, it continues unaffected.
+
+<img width="484" alt="restart_rejected" src="https://github.com/user-attachments/assets/8715db4a-c863-45c5-af75-be473c787e12" />
+
+### Custom Themes
+Personalize the UI with custom color themes.
+
+<img width="641" alt="Custom_Themes" src="https://github.com/user-attachments/assets/8975ae5e-ee66-4931-ad80-b9fddf4355fd" />
 
 ---
 
