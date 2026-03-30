@@ -212,7 +212,7 @@ public class DeploymentWindow extends NfxStage implements Initializable {
 
         FileUploadService fileUploadService = new FileUploadService(
                 project, connectionManager, logPanel::log);
-        logDownloadService = new LogDownloadService(
+        logDownloadService = new LogDownloadService(server,
                 connectionManager, logPanel::log);
         RestartService restartService = new RestartService(
                 server, connectionManager, logPanel::log);

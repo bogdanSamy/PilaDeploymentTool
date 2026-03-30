@@ -42,6 +42,7 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
     @FXML private TextField restartScriptField;
+    @FXML private TextField remoteLogPathField;   // ← adaugă;
     @FXML private Button addBtn;
     @FXML private Button updateBtn;
     @FXML private Button deleteBtn;
@@ -85,7 +86,7 @@ public class ServerManagementDialog extends AbstractNfxUndecoratedWindow impleme
     private void initComponents() {
         formBinder = new ServerFormBinder(
                 nameField, hostField, portField,
-                usernameField, passwordField, restartScriptField
+                usernameField, passwordField, restartScriptField, remoteLogPathField
         );
     }
 

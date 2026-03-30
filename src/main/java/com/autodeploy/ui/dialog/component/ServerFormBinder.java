@@ -4,19 +4,15 @@ import com.autodeploy.domain.model.Server;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
 
-/**
- * Binding bidirecțional între formularul de server și modelul {@link Server}.
- * <p>
- * Include valori default pentru câmpurile comune (port 22, user/pass dev/dev)
- * și validare numerică pe câmpul de port (rejectă caractere non-digit).
- */
 public class ServerFormBinder {
 
     private static final String DEFAULT_USERNAME = "dev";
     private static final String DEFAULT_PASSWORD = "dev";
     private static final String DEFAULT_PORT = "22";
     private static final int DEFAULT_PORT_INT = 22;
-    private static final String DEFAULT_RESTART_SCRIPT = "/nodel/RestartManager/restart_manager.sh";
+    public static final String DEFAULT_RESTART_SCRIPT = "/nodel/RestartManager/restart_manager.sh";
+    private static final String DEFAULT_REMOTE_LOG_PATH = Server.DEFAULT_REMOTE_LOG_PATH;
+
 
     private final TextField nameField;
     private final TextField hostField;
@@ -24,28 +20,27 @@ public class ServerFormBinder {
     private final TextField usernameField;
     private final PasswordField passwordField;
     private final TextField restartScriptField;
+    private final TextField remoteLogPathField;
 
     public ServerFormBinder(TextField nameField, TextField hostField, TextField portField,
                             TextField usernameField, PasswordField passwordField,
-                            TextField restartScriptField) {
+                            TextField restartScriptField, TextField remoteLogPathField) {
         this.nameField = nameField;
         this.hostField = hostField;
         this.portField = portField;
         this.usernameField = usernameField;
         this.passwordField = passwordField;
         this.restartScriptField = restartScriptField;
+        this.remoteLogPathField = remoteLogPathField;
     }
 
     public void applyDefaults() {
         usernameField.setText(DEFAULT_USERNAME);
         passwordField.setText(DEFAULT_PASSWORD);
         portField.setText(DEFAULT_PORT);
+        remoteLogPathField.setText(DEFAULT_REMOTE_LOG_PATH);
     }
 
-    /**
-     * Restricționează input-ul la cifre. Dacă user-ul introduce un caracter
-     * non-numeric, câmpul revine la valoarea anterioară.
-     */
     public void setupPortValidation() {
         portField.textProperty().addListener((obs, oldValue, newValue) -> {
             if (!newValue.matches("\\d*")) {
@@ -65,6 +60,7 @@ public class ServerFormBinder {
                         ? server.getRestartManagerScript()
                         : DEFAULT_RESTART_SCRIPT
         );
+        remoteLogPathField.setText(nullSafe(server.getRemoteLogPath()));
     }
 
     public Server buildServerFromFields() {
@@ -73,12 +69,12 @@ public class ServerFormBinder {
         server.setHost(hostField.getText().trim());
         server.setPort(parsePort());
         server.setUsername(usernameField.getText().trim());
-        server.setPassword(passwordField.getText()); // parolele pot conține spații — nu trim()
+        server.setPassword(passwordField.getText());
         server.setRestartManagerScript(restartScriptField.getText().trim());
+        server.setRemoteLogPath(remoteLogPathField.getText().trim());
         return server;
     }
 
-    /** Clear + restore defaults (port, username, password rămân pre-populte). */
     public void clearAll() {
         nameField.clear();
         hostField.clear();
@@ -86,6 +82,7 @@ public class ServerFormBinder {
         usernameField.setText(DEFAULT_USERNAME);
         passwordField.setText(DEFAULT_PASSWORD);
         restartScriptField.setText(DEFAULT_RESTART_SCRIPT);
+        remoteLogPathField.setText(DEFAULT_REMOTE_LOG_PATH);
     }
 
     public boolean isValid() {
@@ -95,6 +92,7 @@ public class ServerFormBinder {
                 && !usernameField.getText().trim().isEmpty()
                 && !passwordField.getText().isEmpty()
                 && !restartScriptField.getText().trim().isEmpty();
+        // remoteLogPath e opțional — nu e în validare
     }
 
     private int parsePort() {

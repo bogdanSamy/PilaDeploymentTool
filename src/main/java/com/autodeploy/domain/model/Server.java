@@ -20,6 +20,7 @@ public class Server {
 
     /** Script implicit pentru restart manager — suprascris per-server dacă e necesar. */
     private static final String DEFAULT_RESTART_MANAGER_SCRIPT = "/nodel/testeUpload/restart_manager.sh";
+    public static final String DEFAULT_REMOTE_LOG_PATH = "/mount/bea/log/h2o/12d/dINdomain/serverdIN1.out";
     private static final int DEFAULT_PORT = 22;
 
     private String id;
@@ -28,6 +29,7 @@ public class Server {
     private String username;
     private String password;
     private String restartManagerScript;
+    private String remoteLogPath;
     private int port;
 
     public Server() {
@@ -52,7 +54,8 @@ public class Server {
             @JsonProperty("port") int port,
             @JsonProperty("username") String username,
             @JsonProperty("password") String password,
-            @JsonProperty("restartManagerScript") String restartManagerScript
+            @JsonProperty("restartManagerScript") String restartManagerScript,
+            @JsonProperty("remoteLogPath") String remoteLogPath
     ) {
         this.id = (id != null) ? id : UUID.randomUUID().toString();
         this.name = name;
@@ -61,9 +64,8 @@ public class Server {
         this.username = username;
         this.password = password;
         this.restartManagerScript = restartManagerScript;
+        this.remoteLogPath = (remoteLogPath != null) ? remoteLogPath : DEFAULT_REMOTE_LOG_PATH;
     }
-
-    // --- Getters / Setters ---
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -82,6 +84,9 @@ public class Server {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public String getRemoteLogPath() { return remoteLogPath; }
+    public void setRemoteLogPath(String remoteLogPath) { this.remoteLogPath = remoteLogPath; }
 
     /** Returnează scriptul configurat sau default-ul dacă nu e setat. */
     public String getRestartManagerScript() {

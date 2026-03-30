@@ -17,7 +17,6 @@ public class SettingsFormBinder {
     private final TextField antPathField;
     private final TextField java8HomeField;
     private final TextField downloadFolderField;
-    private final TextField remoteLogPathField;
     private final TextField usernameField;
     private final ComboBox<String> themeComboBox;
     private final ApplicationConfig config;
@@ -26,13 +25,12 @@ public class SettingsFormBinder {
     private String originalTheme;
 
     public SettingsFormBinder(TextField antPathField, TextField java8HomeField,
-                              TextField downloadFolderField, TextField remoteLogPathField,
+                              TextField downloadFolderField,
                               TextField usernameField, ComboBox<String> themeComboBox,
                               ApplicationConfig config) {
         this.antPathField = antPathField;
         this.java8HomeField = java8HomeField;
         this.downloadFolderField = downloadFolderField;
-        this.remoteLogPathField = remoteLogPathField;
         this.usernameField = usernameField;
         this.themeComboBox = themeComboBox;
         this.config = config;
@@ -60,7 +58,6 @@ public class SettingsFormBinder {
         antPathField.setText(config.getAntPath());
         java8HomeField.setText(config.getJava8Home());
         downloadFolderField.setText(config.getLocalDownloadDir());
-        remoteLogPathField.setText(config.getRemoteLogPath());
         usernameField.setText(config.getUsername());
 
         originalTheme = config.getTheme();
@@ -71,7 +68,6 @@ public class SettingsFormBinder {
         config.setAntPath(antPathField.getText().trim());
         config.setJava8Home(java8HomeField.getText().trim());
         config.setLocalDownloadDir(downloadFolderField.getText().trim());
-        config.setRemoteLogPath(remoteLogPathField.getText().trim());
         config.setUsername(usernameField.getText().trim());
 
         String selectedTheme = themeComboBox.getValue();

@@ -120,6 +120,19 @@
                                     </children>
                                 </VBox>
 
+                                <!-- Remote Log Path -->
+                                <VBox spacing="6.0">
+                                    <children>
+                                        <HBox spacing="4">
+                                            <Label styleClass="field-label" text="Remote Log Path" />
+                                            <Label styleClass="field-hint" text="(optional)" />
+                                        </HBox>
+                                        <TextField fx:id="remoteLogPathField"
+                                                   promptText="e.g., /mount/bea/log/h2o/12d/dINdomain/serverdIN1.out"
+                                                   styleClass="field-input" />
+                                    </children>
+                                </VBox>
+
                                 <!-- Restart Manager Script Path -->
                                 <VBox spacing="6.0">
                                     <children>

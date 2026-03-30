@@ -1,6 +1,7 @@
 package com.autodeploy.service.utility;
 
 import com.autodeploy.core.config.ApplicationConfig;
+import com.autodeploy.domain.model.Server;
 import com.autodeploy.infrastructure.connection.ConnectionManager;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -29,8 +30,10 @@ public class LogDownloadService {
     private final ConnectionManager connectionManager;
     private final Consumer<String> logger;
     private final ApplicationConfig appConfig;
+    private final Server server;
 
-    public LogDownloadService(ConnectionManager connectionManager, Consumer<String> logger) {
+    public LogDownloadService(Server server, ConnectionManager connectionManager, Consumer<String> logger) {
+        this.server = server;
         this.connectionManager = connectionManager;
         this.logger = logger;
         this.appConfig = ApplicationConfig.getInstance();
@@ -42,7 +45,7 @@ public class LogDownloadService {
      * Creează directorul local dacă nu există.
      */
     public DownloadResult validateConfiguration() {
-        String remoteLogPath = appConfig.getRemoteLogPath();
+        String remoteLogPath = server.getRemoteLogPath();
         if (remoteLogPath == null || remoteLogPath.isEmpty()) {
             return DownloadResult.failure(
                     "Remote log path is not configured in app-config.properties");
@@ -86,7 +89,7 @@ public class LogDownloadService {
             return DownloadResult.failure("Not connected to server. Please reconnect and try again.");
         }
 
-        String remoteLogPath = appConfig.getRemoteLogPath();
+        String remoteLogPath = server.getRemoteLogPath();
         String localDownloadDir = appConfig.getLocalDownloadDir();
 
         log("✓ Remote log path: " + remoteLogPath);

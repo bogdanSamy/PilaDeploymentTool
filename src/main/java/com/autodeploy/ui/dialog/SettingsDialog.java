@@ -37,7 +37,6 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
     @FXML private TextField antPathField;
     @FXML private TextField java8HomeField;
     @FXML private TextField downloadFolderField;
-    @FXML private TextField remoteLogPathField;
     @FXML private TextField usernameField;
     @FXML private ComboBox<String> themeComboBox;
     @FXML private Button browseAntBtn;
@@ -72,7 +71,7 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
     private void initComponents() {
         formBinder = new SettingsFormBinder(
                 antPathField,java8HomeField, downloadFolderField,
-                remoteLogPathField, usernameField, themeComboBox,
+                usernameField, themeComboBox,
                 ApplicationConfig.getInstance()
         );
     }

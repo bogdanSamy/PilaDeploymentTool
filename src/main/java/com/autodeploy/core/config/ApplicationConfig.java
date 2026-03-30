@@ -71,14 +71,6 @@ public class ApplicationConfig {
         properties.setProperty("download.local.dir", dir);
     }
 
-    public String getRemoteLogPath() {
-        return properties.getProperty("download.remote.log.path", "");
-    }
-
-    public void setRemoteLogPath(String path) {
-        properties.setProperty("download.remote.log.path", path);
-    }
-
     public String getUsername() {
         return properties.getProperty("username", "");
     }

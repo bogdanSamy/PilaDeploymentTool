@@ -11,7 +11,7 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.shape.SVGPath?>
 
-<AnchorPane prefHeight="600.0" prefWidth="500.0" minWidth="380.0" minHeight="450.0"
+<AnchorPane prefHeight="520.0" prefWidth="500.0" minWidth="380.0" minHeight="450.0"
             styleClass="base" stylesheets="@../css/settings.css"
             xmlns="http://javafx.com/javafx"
             xmlns:fx="http://javafx.com/fxml/1">
@@ -95,15 +95,6 @@
                                             text="Browse" minWidth="85" prefWidth="85" />
                                 </children>
                             </HBox>
-                        </children>
-                    </VBox>
-
-                    <!-- Remote Log Path -->
-                    <VBox spacing="0" styleClass="field-container">
-                        <children>
-                            <Label styleClass="field-label" text="REMOTE LOG PATH" />
-                            <TextField fx:id="remoteLogPathField" promptText="/mount/bea/log/h2o/12d/dINdomain/serverdIN1.out"
-                                       styleClass="field-input" />
                         </children>
                     </VBox>
 
