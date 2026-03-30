@@ -115,4 +115,12 @@ public class ApplicationConfig {
     public void setTheme(String theme) {
         properties.setProperty("app.theme", theme);
     }
+
+    public String getJava8Home() {
+        return properties.getProperty("java8.home", "");
+    }
+
+    public void setJava8Home(String path) {
+        properties.setProperty("java8.home", path);
+    }
 }

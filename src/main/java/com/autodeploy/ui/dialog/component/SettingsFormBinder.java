@@ -9,12 +9,13 @@ import javafx.scene.control.TextField;
  * Binding bidirecțional între formularul de setări și {@link ApplicationConfig}.
  * <p>
  * Particularitate: tema se aplică instant (live preview) la selecție din combo,
- * dar se revertește la tema originală dacă user-ul anulează dialogul
+ * dar se revertește la cea originală dacă user-ul anulează dialogul
  * ({@link #rollbackTheme}). Tema e persistată doar la Save.
  */
 public class SettingsFormBinder {
 
     private final TextField antPathField;
+    private final TextField java8HomeField;
     private final TextField urlSuffixField;
     private final TextField downloadFolderField;
     private final TextField remoteLogPathField;
@@ -25,11 +26,13 @@ public class SettingsFormBinder {
     /** Tema salvată la momentul deschiderii dialogului — pentru rollback la Cancel. */
     private String originalTheme;
 
-    public SettingsFormBinder(TextField antPathField, TextField urlSuffixField,
+    public SettingsFormBinder(TextField antPathField, TextField java8HomeField,
+                              TextField urlSuffixField,
                               TextField downloadFolderField, TextField remoteLogPathField,
                               TextField usernameField, ComboBox<String> themeComboBox,
                               ApplicationConfig config) {
         this.antPathField = antPathField;
+        this.java8HomeField = java8HomeField;
         this.urlSuffixField = urlSuffixField;
         this.downloadFolderField = downloadFolderField;
         this.remoteLogPathField = remoteLogPathField;
@@ -58,6 +61,7 @@ public class SettingsFormBinder {
      */
     public void loadFromConfig() {
         antPathField.setText(config.getAntPath());
+        java8HomeField.setText(config.getJava8Home());
         urlSuffixField.setText(config.getBrowserUrlSuffix());
         downloadFolderField.setText(config.getLocalDownloadDir());
         remoteLogPathField.setText(config.getRemoteLogPath());
@@ -69,6 +73,7 @@ public class SettingsFormBinder {
 
     public void saveToConfig() {
         config.setAntPath(antPathField.getText().trim());
+        config.setJava8Home(java8HomeField.getText().trim());
         config.setBrowserUrlSuffix(urlSuffixField.getText().trim());
         config.setLocalDownloadDir(downloadFolderField.getText().trim());
         config.setRemoteLogPath(remoteLogPathField.getText().trim());

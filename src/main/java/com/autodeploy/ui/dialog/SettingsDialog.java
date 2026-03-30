@@ -35,12 +35,14 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
 
     @FXML private Button closeBtn;
     @FXML private TextField antPathField;
+    @FXML private TextField java8HomeField;
     @FXML private TextField urlSuffixField;
     @FXML private TextField downloadFolderField;
     @FXML private TextField remoteLogPathField;
     @FXML private TextField usernameField;
     @FXML private ComboBox<String> themeComboBox;
     @FXML private Button browseAntBtn;
+    @FXML private Button browseJava8Btn;
     @FXML private Button browseDownloadBtn;
     @FXML private Button saveBtn;
     @FXML private Button cancelBtn;
@@ -70,7 +72,7 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
 
     private void initComponents() {
         formBinder = new SettingsFormBinder(
-                antPathField, urlSuffixField, downloadFolderField,
+                antPathField,java8HomeField, urlSuffixField, downloadFolderField,
                 remoteLogPathField, usernameField, themeComboBox,
                 ApplicationConfig.getInstance()
         );
@@ -85,6 +87,8 @@ public class SettingsDialog extends AbstractNfxUndecoratedWindow implements Init
                 FileBrowserHelper.browseForFile(this, antPathField, "Select Ant Path"));
         browseDownloadBtn.setOnAction(e ->
                 FileBrowserHelper.browseForFolder(this, downloadFolderField, "Select Download Folder"));
+        browseJava8Btn.setOnAction(e ->
+                FileBrowserHelper.browseForFolder(this, java8HomeField, "Select Java 8 Home Directory"));
     }
 
     private void handleSave() {
