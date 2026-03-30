@@ -28,6 +28,7 @@ public class ProjectFormBinder {
     private final TextField localJspPathField;
     private final TextField remoteJarPathField;
     private final TextField remoteJspPathField;
+    private final TextField browserUrlSuffixField;
     private final TextField buildFilePathField;
     private final ComboBox<String> antTargetComboBox;
     private final TextArea antCommandArea;
@@ -35,7 +36,8 @@ public class ProjectFormBinder {
 
     public ProjectFormBinder(TextField nameField, TextField localJarPathField,
                              TextField localJspPathField, TextField remoteJarPathField,
-                             TextField remoteJspPathField, TextField buildFilePathField,
+                             TextField remoteJspPathField, TextField browserUrlSuffixField,
+                             TextField buildFilePathField,
                              ComboBox<String> antTargetComboBox, TextArea antCommandArea,
                              LibraryRowManager libraryRowManager) {
         this.nameField = nameField;
@@ -43,6 +45,7 @@ public class ProjectFormBinder {
         this.localJspPathField = localJspPathField;
         this.remoteJarPathField = remoteJarPathField;
         this.remoteJspPathField = remoteJspPathField;
+        this.browserUrlSuffixField = browserUrlSuffixField;
         this.buildFilePathField = buildFilePathField;
         this.antTargetComboBox = antTargetComboBox;
         this.antCommandArea = antCommandArea;
@@ -60,6 +63,7 @@ public class ProjectFormBinder {
         localJspPathField.setText(nullSafe(project.getLocalJspPath()));
         remoteJarPathField.setText(nullSafe(project.getRemoteJarPath()));
         remoteJspPathField.setText(nullSafe(project.getRemoteJspPath()));
+        browserUrlSuffixField.setText(nullSafe(project.getBrowserUrlSuffix()));
         buildFilePathField.setText(nullSafe(project.getBuildFilePath()));
 
         updateAntTargets(project.getBuildFilePath());
@@ -78,6 +82,7 @@ public class ProjectFormBinder {
         project.setLocalJspPath(localJspPathField.getText().trim());
         project.setRemoteJarPath(remoteJarPathField.getText().trim());
         project.setRemoteJspPath(remoteJspPathField.getText().trim());
+        project.setBrowserUrlSuffix(browserUrlSuffixField.getText().trim());
         project.setBuildFilePath(buildFilePathField.getText().trim());
         project.setAntTarget(antTargetComboBox.getValue());
         project.setAntCommand(antCommandArea.getText());
@@ -91,6 +96,7 @@ public class ProjectFormBinder {
         localJspPathField.clear();
         remoteJarPathField.clear();
         remoteJspPathField.clear();
+        browserUrlSuffixField.setText(Project.DEFAULT_BROWSER_URL_SUFFIX);
         buildFilePathField.clear();
         antTargetComboBox.getItems().clear();
         antTargetComboBox.setValue(null);
@@ -135,14 +141,11 @@ public class ProjectFormBinder {
 
     /**
      * Generează comanda Ant din componentele formularului.
-     * Format: {@code ant [-lib "path"] [-f "build.xml"] [target]}
+     * Format: {@code ant [-f "build.xml"] [target]}
+     * Librăriile se setează pe CLASSPATH în script, nu cu -lib.
      */
     public void generateCommand() {
         StringBuilder command = new StringBuilder("ant");
-
-        for (String lib : libraryRowManager.getLibraryPaths()) {
-            command.append(" -lib \"").append(lib).append("\"");
-        }
 
         String buildFile = buildFilePathField.getText();
         if (buildFile != null && !buildFile.trim().isEmpty()) {

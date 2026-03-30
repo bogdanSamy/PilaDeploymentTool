@@ -1,6 +1,7 @@
 package com.autodeploy.service.utility;
 
 import com.autodeploy.core.config.ApplicationConfig;
+import com.autodeploy.domain.model.Project;
 import com.autodeploy.domain.model.Server;
 
 import java.awt.*;
@@ -22,11 +23,11 @@ public class BrowserService {
     private static final Logger LOGGER = Logger.getLogger(BrowserService.class.getName());
 
     private final Consumer<String> logger;
-    private final ApplicationConfig appConfig;
+    private final Project project;
 
-    public BrowserService(Consumer<String> logger) {
+    public BrowserService(Project project, Consumer<String> logger) {
+        this.project = project;
         this.logger = logger;
-        this.appConfig = ApplicationConfig.getInstance();
     }
 
     /**
@@ -34,7 +35,7 @@ public class BrowserService {
      */
     public boolean openServer(Server server) {
         log("🌐 Opening server in browser...");
-        String url = appConfig.getFullBrowserUrl(server.getHost());
+        String url = project.getFullBrowserUrl(server.getHost());
         log("✓ URL: " + url);
         return openUrl(url);
     }

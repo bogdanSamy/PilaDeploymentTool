@@ -174,7 +174,7 @@ public class DeploymentWindow extends NfxStage implements Initializable {
         titleBarManager.setup();
 
         buildService = new BuildService(project, logPanel::log);
-        browserService = new BrowserService(logPanel::log);
+        browserService = new BrowserService(project, logPanel::log);
         fileScannerService = new FileScannerService(project, logPanel::log);
 
         jarPanel = new FileListPanel(jarListContainer, jarCountLabel,
@@ -353,7 +353,7 @@ public class DeploymentWindow extends NfxStage implements Initializable {
 
     private void handleOpenBrowser() {
         if (!browserService.openServer(server)) {
-            String url = ApplicationConfig.getInstance().getFullBrowserUrl(server.getHost());
+            String url = Project.getFullBrowserUrl(server.getHost());
             CustomAlert.showError("Browser Error",
                     "Failed to open browser.\nPlease open manually:\n" + url);
         }

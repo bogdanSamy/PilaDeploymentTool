@@ -16,7 +16,6 @@ public class SettingsFormBinder {
 
     private final TextField antPathField;
     private final TextField java8HomeField;
-    private final TextField urlSuffixField;
     private final TextField downloadFolderField;
     private final TextField remoteLogPathField;
     private final TextField usernameField;
@@ -27,13 +26,11 @@ public class SettingsFormBinder {
     private String originalTheme;
 
     public SettingsFormBinder(TextField antPathField, TextField java8HomeField,
-                              TextField urlSuffixField,
                               TextField downloadFolderField, TextField remoteLogPathField,
                               TextField usernameField, ComboBox<String> themeComboBox,
                               ApplicationConfig config) {
         this.antPathField = antPathField;
         this.java8HomeField = java8HomeField;
-        this.urlSuffixField = urlSuffixField;
         this.downloadFolderField = downloadFolderField;
         this.remoteLogPathField = remoteLogPathField;
         this.usernameField = usernameField;
@@ -62,7 +59,6 @@ public class SettingsFormBinder {
     public void loadFromConfig() {
         antPathField.setText(config.getAntPath());
         java8HomeField.setText(config.getJava8Home());
-        urlSuffixField.setText(config.getBrowserUrlSuffix());
         downloadFolderField.setText(config.getLocalDownloadDir());
         remoteLogPathField.setText(config.getRemoteLogPath());
         usernameField.setText(config.getUsername());
@@ -74,7 +70,6 @@ public class SettingsFormBinder {
     public void saveToConfig() {
         config.setAntPath(antPathField.getText().trim());
         config.setJava8Home(java8HomeField.getText().trim());
-        config.setBrowserUrlSuffix(urlSuffixField.getText().trim());
         config.setLocalDownloadDir(downloadFolderField.getText().trim());
         config.setRemoteLogPath(remoteLogPathField.getText().trim());
         config.setUsername(usernameField.getText().trim());

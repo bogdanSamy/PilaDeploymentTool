@@ -83,15 +83,6 @@
                         </children>
                     </VBox>
 
-                    <!-- Browser URL Suffix -->
-                    <VBox spacing="0" styleClass="field-container">
-                        <children>
-                            <Label styleClass="field-label" text="BROWSER URL SUFFIX" />
-                            <TextField fx:id="urlSuffixField" promptText="main?application.HomePageIntranet.new"
-                                       styleClass="field-input" />
-                        </children>
-                    </VBox>
-
                     <!-- Local Download Directory -->
                     <VBox spacing="0" styleClass="field-container">
                         <children>

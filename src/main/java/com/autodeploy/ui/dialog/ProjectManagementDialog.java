@@ -61,6 +61,8 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
     @FXML private TextField localJspPathField;
     @FXML private TextField remoteJarPathField;
     @FXML private TextField remoteJspPathField;
+    @FXML private TextField browserUrlSuffixField;
+
     @FXML private TextField buildFilePathField;
     @FXML private ComboBox<String> antTargetComboBox;
 
@@ -127,6 +129,9 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
         updateBtn.setDisable(true);
         deleteBtn.setDisable(true);
         libraryRowManager.updateVisibility();
+
+        // Pre-populate default values for new projects
+        browserUrlSuffixField.setText(Project.DEFAULT_BROWSER_URL_SUFFIX);
     }
 
     private void initComponents() {
@@ -137,8 +142,9 @@ public class ProjectManagementDialog extends AbstractNfxUndecoratedWindow implem
 
         formBinder = new ProjectFormBinder(
                 nameField, localJarPathField, localJspPathField,
-                remoteJarPathField, remoteJspPathField, buildFilePathField,
-                antTargetComboBox, antCommandArea, libraryRowManager
+                remoteJarPathField, remoteJspPathField, browserUrlSuffixField,
+                buildFilePathField, antTargetComboBox, antCommandArea,
+                libraryRowManager
         );
 
         buildResultsPanel = new BuildResultsPanel(

@@ -32,10 +32,14 @@ public class Project {
     private String antTarget;
     private String antCommand;
     private List<String> antLibraries;
+    private static String browserUrlSuffix;
+
+    public static final String DEFAULT_BROWSER_URL_SUFFIX = "main?application.HomePageIntranet.new";
 
     public Project() {
         this.id = UUID.randomUUID().toString();
         this.antLibraries = new ArrayList<>();
+        this.browserUrlSuffix = DEFAULT_BROWSER_URL_SUFFIX;
     }
 
     public Project(String name) {
@@ -54,7 +58,8 @@ public class Project {
             @JsonProperty("buildFilePath") String buildFilePath,
             @JsonProperty("antTarget") String antTarget,
             @JsonProperty("antCommand") String antCommand,
-            @JsonProperty("antLibraries") List<String> antLibraries
+            @JsonProperty("antLibraries") List<String> antLibraries,
+            @JsonProperty("browserUrlSuffix") String browserUrlSuffix
     ) {
         this.id = (id != null) ? id : UUID.randomUUID().toString();
         this.name = name;
@@ -66,9 +71,9 @@ public class Project {
         this.antTarget = antTarget;
         this.antCommand = antCommand;
         this.antLibraries = (antLibraries != null) ? new ArrayList<>(antLibraries) : new ArrayList<>();
+        this.browserUrlSuffix = (browserUrlSuffix != null) ? browserUrlSuffix : DEFAULT_BROWSER_URL_SUFFIX;
     }
 
-    // --- Getters / Setters (neschimbate) ---
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -102,6 +107,9 @@ public class Project {
         this.antLibraries = (antLibraries != null) ? new ArrayList<>(antLibraries) : new ArrayList<>();
     }
 
+    public String getBrowserUrlSuffix() { return browserUrlSuffix; }
+    public void setBrowserUrlSuffix(String browserUrlSuffix) { this.browserUrlSuffix = browserUrlSuffix; }
+
     /**
      * Validare minimală: toate căile și configurările de build sunt obligatorii.
      * Ant libraries e opțional (unele proiecte nu au dependențe externe).
@@ -116,6 +124,19 @@ public class Project {
                 && StringUtils.isNotEmpty(buildFilePath)
                 && StringUtils.isNotEmpty(antTarget)
                 && StringUtils.isNotEmpty(antCommand);
+    }
+
+    /**
+     * Construiește URL-ul complet: http://{serverHost}/{suffix}.
+     * Dacă suffix-ul nu e configurat, returnează doar http://{serverHost}.
+     */
+    @JsonIgnore
+    public static String getFullBrowserUrl(String serverHost) {
+        String suffix = (browserUrlSuffix != null) ? browserUrlSuffix.trim() : "";
+        if (suffix.isEmpty()) {
+            return "http://" + serverHost;
+        }
+        return "http://" + serverHost + (suffix.startsWith("/") ? suffix : "/" + suffix);
     }
 
     @Override

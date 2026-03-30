@@ -139,6 +139,19 @@
                                     </children>
                                 </VBox>
 
+                                <!-- Browser URL Suffix -->
+                                <VBox spacing="6.0">
+                                    <children>
+                                        <HBox spacing="4">
+                                            <Label styleClass="field-label" text="Browser URL suffix" />
+                                            <Label styleClass="field-hint" text="(optional)" />
+                                        </HBox>
+                                        <TextField fx:id="browserUrlSuffixField"
+                                                   promptText="e.g., main?application.HomePageIntranet.new"
+                                                   styleClass="field-input" />
+                                    </children>
+                                </VBox>
+
                                 <!-- ═══════════ BUILD CONFIGURATION ═══════════ -->
                                 <Separator styleClass="section-separator" />
                                 <Label styleClass="subsection-label" text="Build Configuration" />

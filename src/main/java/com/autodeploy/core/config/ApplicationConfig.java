@@ -62,27 +62,6 @@ public class ApplicationConfig {
         properties.setProperty("ant.path", path);
     }
 
-    public String getBrowserUrlSuffix() {
-        return properties.getProperty("browser.url.suffix",
-                "main?application.HomePageIntranet.new");
-    }
-
-    public void setBrowserUrlSuffix(String suffix) {
-        properties.setProperty("browser.url.suffix", suffix);
-    }
-
-    /**
-     * Construiește URL-ul complet pentru browser: http://{serverIp}/{suffix}.
-     * Dacă suffix-ul nu e configurat, returnează doar http://{serverIp}.
-     */
-    public String getFullBrowserUrl(String serverIp) {
-        String suffix = getBrowserUrlSuffix().trim();
-        if (suffix.isEmpty()) {
-            return "http://" + serverIp;
-        }
-        return "http://" + serverIp + (suffix.startsWith("/") ? suffix : "/" + suffix);
-    }
-
     public String getLocalDownloadDir() {
         return properties.getProperty("download.local.dir",
                 System.getProperty("user.home") + "/Downloads");

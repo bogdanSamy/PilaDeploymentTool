@@ -22,7 +22,6 @@ REM Copy JAR
 copy target\LaPilaSiLaCiocan-1.0-SNAPSHOT-uber.jar "%OUTPUT%\app\"
 
 REM Copy JavaFX JARs
-
 copy "%JAVAFX_SDK%\lib\*.jar" "%OUTPUT%\javafx\"
 
 REM Copy JavaFX DLLs to runtime bin
@@ -38,7 +37,7 @@ REM Create launcher
     echo @echo off
     echo cd /d "%%~dp0"
     echo set PATH=%%CD%%\runtime\bin;%%PATH%%
-    echo runtime\bin\javaw.exe -Djava.library.path=runtime\bin --module-path javafx --add-modules javafx.controls,javafx.fxml,javafx.graphics -jar app\LaPilaSiLaCiocan-1.0-SNAPSHOT-uber.jar
+    echo start "" runtime\bin\javaw.exe -Djava.library.path=runtime\bin --module-path javafx --add-modules javafx.controls,javafx.fxml,javafx.graphics -jar app\LaPilaSiLaCiocan-1.0-SNAPSHOT-uber.jar
 ) > "%OUTPUT%\LaPilaSiLaCiocan.bat"
 
 echo Done! Testing...
