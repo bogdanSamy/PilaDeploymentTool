@@ -147,6 +147,10 @@ public class ProjectFormBinder {
     public void generateCommand() {
         StringBuilder command = new StringBuilder("ant");
 
+        for (String lib : libraryRowManager.getLibraryPaths()) {
+            command.append(" -lib \"").append(lib).append("\"");
+        }
+
         String buildFile = buildFilePathField.getText();
         if (buildFile != null && !buildFile.trim().isEmpty()) {
             command.append(" -f \"").append(buildFile.trim()).append("\"");

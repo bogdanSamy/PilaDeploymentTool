@@ -288,10 +288,10 @@ public class BuildService {
             writer.write("set JAVA_HOME=" + java8Home + "\r\n");
         }
 
-        String classpath = buildClasspath(";");
-        if (!classpath.isEmpty()) {
-            writer.write("set CLASSPATH=" + classpath + ";%CLASSPATH%\r\n");
-        }
+//        String classpath = buildClasspath(";");
+//        if (!classpath.isEmpty()) {
+//            writer.write("set CLASSPATH=" + classpath + ";%CLASSPATH%\r\n");
+//        }
     }
 
     /**
@@ -308,10 +308,10 @@ public class BuildService {
             writer.write("export PATH=" + java8Home + "/bin:$PATH\n");
         }
 
-        String classpath = buildClasspath(":");
-        if (!classpath.isEmpty()) {
-            writer.write("export CLASSPATH=" + classpath + ":$CLASSPATH\n");
-        }
+//        String classpath = buildClasspath(":");
+//        if (!classpath.isEmpty()) {
+//            writer.write("export CLASSPATH=" + classpath + ":$CLASSPATH\n");
+//        }
     }
 
     /**
