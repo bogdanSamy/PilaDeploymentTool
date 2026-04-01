@@ -310,6 +310,6 @@ public class RestartHandler {
             CustomAlert.showError("Restart Request Failed", error.getMessage());
         });
 
-        AsyncHelper.runDaemon(restartTask, "Restart-Request");
+        AsyncHelper.runVirtual(restartTask, "Restart-Request");
     }
 }

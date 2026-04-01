@@ -118,7 +118,7 @@ public class ConnectionHandler {
         overlayManager.showLoadingOverlay("Connecting to Server...", serverDisplayName());
         if (onDisconnected != null) onDisconnected.run();
 
-        AsyncHelper.runDaemon(connectionManager.connectAsync(), "SFTP-Connection");
+        AsyncHelper.runVirtual(connectionManager.connectAsync(), "SFTP-Connection");
     }
 
     public void reconnect() {

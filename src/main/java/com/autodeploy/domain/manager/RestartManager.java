@@ -93,9 +93,9 @@ public class RestartManager {
         if (polling) return;
 
         polling = true;
-        pollingThread = new Thread(() -> pollLoop(intervalMs), "RestartManager-Polling");
-        pollingThread.setDaemon(true);
-        pollingThread.start();
+        pollingThread = Thread.ofVirtual()
+                .name("RestartManager-Polling")
+                .start(() -> pollLoop(intervalMs));
     }
 
     public void stopPolling() {

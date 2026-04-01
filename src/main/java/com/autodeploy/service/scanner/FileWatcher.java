@@ -74,10 +74,9 @@ public class FileWatcher {
                 entry -> fileTimestamps.put(entry.getKey(), entry.getValue())
         );
 
-        watchThread = new Thread(this::watchLoop,
-                "FileWatcher-" + fileExtension + "-" + directoryPath.getFileName());
-        watchThread.setDaemon(true);
-        watchThread.start();
+        watchThread = Thread.ofVirtual()
+                .name("FileWatcher-" + fileExtension + "-" + directoryPath.getFileName())
+                .start(this::watchLoop);
 
         LOGGER.info("Started watching: " + directoryPath + " for *" + fileExtension
                 + (recursive ? " (recursive)" : ""));

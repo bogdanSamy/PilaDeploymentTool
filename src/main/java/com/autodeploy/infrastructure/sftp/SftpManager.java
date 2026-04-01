@@ -150,30 +150,28 @@ public class SftpManager {
         stopConnectionMonitoring();
         running.set(true);
 
-        monitorThread = new Thread(() -> {
-            while (running.get()) {
-                try {
-                    Thread.sleep(MONITOR_INTERVAL_MS);
-                    if (!running.get()) break;
+        monitorThread = Thread.ofVirtual()
+                .name("SFTP-Monitor-" + server.getHost())
+                .start(() ->{
+                    while (running.get()) {
+                        try {
+                            Thread.sleep(MONITOR_INTERVAL_MS);
+                            if (!running.get()) break;
 
-                    if (!isConnectionAlive()) {
-                        LOGGER.warning("Connection lost to: " + server.getHost());
-                        if (statusListener != null) {
-                            statusListener.onConnectionLost();
+                            if (!isConnectionAlive()) {
+                                LOGGER.warning("Connection lost to: " + server.getHost());
+                                if (statusListener != null) {
+                                    statusListener.onConnectionLost();
+                                }
+                                break;
+                            }
+                        } catch (InterruptedException e) {
+                            Thread.currentThread().interrupt();
+                            break;
+                        } catch (Exception e) {
+                            LOGGER.log(Level.WARNING, "Error in connection monitoring", e);
                         }
-                        break;
-                    }
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
-                } catch (Exception e) {
-                    LOGGER.log(Level.WARNING, "Error in connection monitoring", e);
-                }
-            }
-        }, "SFTP-Monitor-" + server.getHost());
-
-        monitorThread.setDaemon(true);
-        monitorThread.start();
+                    }});
     }
 
     private void stopConnectionMonitoring() {
