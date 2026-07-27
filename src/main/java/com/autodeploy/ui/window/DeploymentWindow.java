@@ -426,6 +426,7 @@ public class DeploymentWindow extends NfxStage implements Initializable {
             new SelectionWindow().show();
         } catch (Exception ex) {
             LOGGER.severe("Error opening new window: " + ex.getMessage());
+            CustomAlert.showError("Error", "Failed to open new window:\n" + ex.getMessage());
         }
     }
 }
