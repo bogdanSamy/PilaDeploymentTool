@@ -173,6 +173,11 @@ public class DeploymentWindow extends NfxStage implements Initializable {
         );
         titleBarManager.setup();
 
+        // newWindowBtn lives inside the custom title bar's drag region. Register it as a
+        // client area so NfxStage routes its mouse events to the button instead of treating
+        // presses/drags on it as a window-move gesture (which otherwise swallows the click).
+        addClientAreas(newWindowBtn);
+
         buildService = new BuildService(project, logPanel::log);
         browserService = new BrowserService(project, logPanel::log);
         fileScannerService = new FileScannerService(project, logPanel::log);
