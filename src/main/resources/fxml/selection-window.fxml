@@ -122,6 +122,13 @@
                            prefWidth="500"
                            maxWidth="Infinity"
                            prefHeight="50"/>
+                <MFXButton fx:id="newWindowBtn"
+                           text="➕ New Window"
+                           styleClass="secondary-button"
+                           minWidth="200"
+                           prefWidth="500"
+                           maxWidth="Infinity"
+                           prefHeight="50"/>
             </VBox>
         </VBox>
     </ScrollPane>

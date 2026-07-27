@@ -21,6 +21,8 @@
                 <Image url="@../logo.png" />
             </ImageView>
             <Label fx:id="title" styleClass="title" text="Deployment Manager" />
+            <MFXButton fx:id="newWindowBtn" text="➕ New Window"
+                       styleClass="new-window-btn" prefHeight="28.0" />
         </HBox>
 
         <HBox alignment="CENTER_RIGHT" spacing="0"
