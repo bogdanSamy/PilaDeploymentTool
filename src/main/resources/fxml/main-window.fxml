@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.shape.SVGPath?>
+<?import io.github.palexdev.materialfx.controls.MFXButton?>
+
+<!--
+    Fereastra principală unică a aplicației.
+    Title bar-ul shared conține: iconița, titlul, tab strip (HBox dinamic),
+    butonul "New Tab" și controalele ferestrei (min/max/close).
+    Content area (StackPane) afișează conținutul tab-ului activ.
+-->
+<VBox prefHeight="650.0" prefWidth="500.0" minWidth="400.0" minHeight="500.0"
+      stylesheets="@../css/deployment-window.css"
+      xmlns="http://javafx.com/javafx/21"
+      xmlns:fx="http://javafx.com/fxml/1">
+
+    <!-- Title Bar shared -->
+    <AnchorPane styleClass="title-bar" minHeight="40.0" maxHeight="40.0" prefHeight="40.0">
+        <!-- Left side: icon, title, tab strip, New Tab button -->
+        <HBox alignment="CENTER_LEFT" spacing="8"
+              AnchorPane.leftAnchor="8.0" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0">
+            <ImageView fx:id="iconView" fitHeight="20.0" fitWidth="20.0"
+                       pickOnBounds="true" preserveRatio="true">
+                <Image url="@../logo.png" />
+            </ImageView>
+            <Label fx:id="title" styleClass="title" text="La Pila &amp; La Ciocan" />
+            <!-- Tab strip: chip-urile tab-urilor sunt adăugate dinamic de MainWindow -->
+            <HBox fx:id="tabStripBox" alignment="CENTER_LEFT" spacing="4" />
+            <!-- New Tab button — înregistrat ca client area în MainWindow.initialize() -->
+            <MFXButton fx:id="newTabBtn" text="➕ New Tab"
+                       styleClass="new-window-btn" prefHeight="28.0" />
+        </HBox>
+
+        <!-- Right side: window controls -->
+        <HBox alignment="CENTER_RIGHT" spacing="0"
+              AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0" AnchorPane.bottomAnchor="0.0">
+            <Button fx:id="minBtn" mnemonicParsing="false" styleClass="hit-btn, minimize-btn">
+                <graphic>
+                    <SVGPath content="M1 7L1 8L14 8L14 7Z" styleClass="shape" />
+                </graphic>
+            </Button>
+            <Button fx:id="maxBtn" mnemonicParsing="false" styleClass="hit-btn, maximize-btn">
+                <graphic>
+                    <SVGPath fx:id="maxShape" styleClass="shape" />
+                </graphic>
+            </Button>
+            <Button fx:id="closeBtn" mnemonicParsing="false" styleClass="hit-btn, close-btn">
+                <graphic>
+                    <SVGPath content="M3.726563 3.023438L3.023438 3.726563L7.292969 8L3.023438 12.269531L3.726563 12.980469L8 8.707031L12.269531 12.980469L12.980469 12.269531L8.707031 8L12.980469 3.726563L12.269531 3.023438L8 7.292969Z" styleClass="shape" />
+                </graphic>
+            </Button>
+        </HBox>
+    </AnchorPane>
+
+    <!-- Content area: conținutul tab-ului activ e afișat aici -->
+    <StackPane fx:id="contentArea" VBox.vgrow="ALWAYS" />
+
+</VBox>

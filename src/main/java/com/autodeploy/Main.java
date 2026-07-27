@@ -1,7 +1,7 @@
 package com.autodeploy;
 
 import com.autodeploy.core.config.ThemeManager;
-import com.autodeploy.ui.window.SelectionWindow;
+import com.autodeploy.ui.window.MainWindow;
 import javafx.application.Application;
 import javafx.stage.Stage;
 
@@ -17,8 +17,8 @@ public class Main extends Application {
         try {
             ThemeManager.loadSavedTheme();
 
-            SelectionWindow selectionWindow = new SelectionWindow();
-            selectionWindow.show();
+            MainWindow mainWindow = new MainWindow();
+            mainWindow.show();
 
         } catch (Exception e) {
             LOGGER.log(Level.SEVERE, "Failed to start application", e);
