@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.image.Image?>
+<?import io.github.palexdev.materialfx.controls.MFXButton?>
+
+<!--
+    Conținutul tab-ului de selecție (fără title bar — acesta e shared în MainWindow).
+    Identic cu selection-window.fxml sub AnchorPane title bar, fără butonul "New Window"
+    (mutat în title bar-ul MainWindow ca "New Tab").
+-->
+<ScrollPane fitToWidth="true" maxHeight="Infinity" maxWidth="Infinity"
+            styleClass="main-scroll-pane"
+            stylesheets="@../css/selection-window.css"
+            xmlns="http://javafx.com/javafx/21"
+            xmlns:fx="http://javafx.com/fxml/1">
+
+    <VBox styleClass="content-area" spacing="0" alignment="TOP_CENTER">
+        <padding>
+            <Insets top="20" bottom="0" left="30" right="30"/>
+        </padding>
+
+        <!-- App Logo cu Shadow Effect -->
+        <ImageView fx:id="appLogoView" fitHeight="250.0" preserveRatio="true"
+                   pickOnBounds="true" styleClass="app-logo">
+            <Image url="@../logo.png" />
+        </ImageView>
+
+        <Region minHeight="20" VBox.vgrow="NEVER"/>
+
+        <!-- Server Selection -->
+        <VBox spacing="10" maxWidth="600" styleClass="selection-container">
+            <Label text="SERVER SELECTION" styleClass="selection-label"/>
+            <HBox spacing="12" alignment="CENTER_LEFT" styleClass="combo-row">
+                <ComboBox fx:id="serverComboBox"
+                          promptText="Select a server..."
+                          styleClass="custom-combo"
+                          minWidth="150"
+                          prefWidth="400"
+                          maxWidth="Infinity"
+                          prefHeight="50"
+                          HBox.hgrow="ALWAYS"/>
+                <MFXButton fx:id="manageServersBtn"
+                           text="Manage"
+                           styleClass="manage-button"
+                           minWidth="90"
+                           prefWidth="100"
+                           maxWidth="100"
+                           prefHeight="50"/>
+            </HBox>
+        </VBox>
+
+        <Region minHeight="15" VBox.vgrow="NEVER"/>
+
+        <!-- Project Selection -->
+        <VBox spacing="10" maxWidth="600" styleClass="selection-container">
+            <Label text="PROJECT SELECTION" styleClass="selection-label"/>
+            <HBox spacing="12" alignment="CENTER_LEFT" styleClass="combo-row">
+                <ComboBox fx:id="projectComboBox"
+                          promptText="Select a project..."
+                          styleClass="custom-combo"
+                          minWidth="150"
+                          prefWidth="400"
+                          maxWidth="Infinity"
+                          prefHeight="50"
+                          HBox.hgrow="ALWAYS"/>
+                <MFXButton fx:id="manageProjectsBtn"
+                           text="Manage"
+                           styleClass="manage-button"
+                           minWidth="90"
+                           prefWidth="100"
+                           maxWidth="100"
+                           prefHeight="50"/>
+            </HBox>
+        </VBox>
+
+        <Region minHeight="25" VBox.vgrow="NEVER"/>
+
+        <!-- Action Buttons (fără "New Window" — acum e "New Tab" în title bar) -->
+        <VBox spacing="12" alignment="CENTER" maxWidth="600" styleClass="action-buttons-container">
+            <MFXButton fx:id="startDeployBtn"
+                       text="🚀 Start Deploy"
+                       styleClass="primary-button"
+                       minWidth="200"
+                       prefWidth="500"
+                       maxWidth="Infinity"
+                       prefHeight="60"
+                       disable="true"/>
+            <MFXButton fx:id="settingsBtn"
+                       text="Settings"
+                       styleClass="secondary-button"
+                       minWidth="200"
+                       prefWidth="500"
+                       maxWidth="Infinity"
+                       prefHeight="50"/>
+        </VBox>
+    </VBox>
+
+</ScrollPane>
