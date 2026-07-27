@@ -79,6 +79,7 @@ public class DeploymentWindow extends NfxStage implements Initializable {
     @FXML private Label title, projectNameLabel, serverNameLabel, jarCountLabel, jspCountLabel;
     @FXML private MFXButton changeBtn, restartServerBtn, downloadLogsBtn, buildProjectBtn;
     @FXML private MFXButton openBrowserBtn, uploadJarsBtn, uploadJspsBtn, uploadAllBtn;
+    @FXML private MFXButton newWindowBtn;
     @FXML private TitledPane jarSection, jspSection;
     @FXML private VBox jarListContainer, jspListContainer, logSection;
     @FXML private TextField jspSearchField;
@@ -88,7 +89,6 @@ public class DeploymentWindow extends NfxStage implements Initializable {
 
     private final Project project;
     private final Server server;
-    private SelectionWindow selectionWindow;
 
     // --- Componente delegate ---
 
@@ -270,6 +270,7 @@ public class DeploymentWindow extends NfxStage implements Initializable {
         uploadJspsBtn.setOnAction(e -> uploadHandler.uploadJsps());
         uploadAllBtn.setOnAction(e -> uploadHandler.uploadAll());
         changeBtn.setOnAction(e -> returnToSelectionWindow());
+        newWindowBtn.setOnAction(e -> openNewWindow());
     }
 
     /**
@@ -382,8 +383,7 @@ public class DeploymentWindow extends NfxStage implements Initializable {
     }
 
     /**
-     * Cleanup complet și navigare înapoi la SelectionWindow.
-     * Refolosește instanța existentă dacă există, altfel creează una nouă.
+     * Cleanup complet și deschide o nouă SelectionWindow independentă.
      */
     private void performCleanupAndReturn() {
         logPanel.log("✓ Performing cleanup...");
@@ -391,14 +391,10 @@ public class DeploymentWindow extends NfxStage implements Initializable {
         logPanel.log("✓ Cleanup completed");
 
         Platform.runLater(() -> {
-            if (selectionWindow != null) {
-                selectionWindow.show();
-            } else {
-                try {
-                    new SelectionWindow().show();
-                } catch (Exception e) {
-                    LOGGER.severe("Error creating selection window: " + e.getMessage());
-                }
+            try {
+                new SelectionWindow().show();
+            } catch (Exception e) {
+                LOGGER.severe("Error creating selection window: " + e.getMessage());
             }
         });
         close();
@@ -424,7 +420,13 @@ public class DeploymentWindow extends NfxStage implements Initializable {
         return TITLE_BAR_HEIGHT;
     }
 
-    public void setSelectionWindow(SelectionWindow selectionWindow) {
-        this.selectionWindow = selectionWindow;
+    /** Deschide o nouă fereastră de selecție independentă, fără a afecta ferestrele existente. */
+    private void openNewWindow() {
+        try {
+            new SelectionWindow().show();
+        } catch (Exception ex) {
+            LOGGER.severe("Error opening new window: " + ex.getMessage());
+            CustomAlert.showError("Error", "Failed to open new window:\n" + ex.getMessage());
+        }
     }
 }

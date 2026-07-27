@@ -45,10 +45,12 @@ import static com.autodeploy.core.constants.Constants.*;
  *   <li>Butonul "Start Deploy" e disabled până când ambele selecții sunt făcute</li>
  *   <li>Deschidere dialoguri de management (servere, proiecte, setări) cu refresh
  *       automat al listelor la închidere</li>
+ *   <li>Butonul "New Window" deschide o instanță independentă, fără a afecta ferestrele existente</li>
  * </ul>
  * <p>
- * Navigare: SelectionWindow → {@link DeploymentWindow} (această fereastră se ascunde,
- * nu se distruge — DeploymentWindow o poate re-afișa la "Change Project/Server").
+ * Navigare: SelectionWindow → {@link DeploymentWindow} (această fereastră se închide;
+ * la "Change Project/Server" o nouă SelectionWindow independentă este creată).
+ * Multiple instanțe pot coexista simultan, fiecare conectată la alt server/proiect.
  */
 public class SelectionWindow extends NfxStage implements Initializable {
 
@@ -66,6 +68,7 @@ public class SelectionWindow extends NfxStage implements Initializable {
     @FXML private MFXButton manageServersBtn;
     @FXML private MFXButton settingsBtn;
     @FXML private MFXButton startDeployBtn;
+    @FXML private MFXButton newWindowBtn;
 
     private DialogManager dialogManager;
     private SelectionComboManager comboManager;
@@ -137,6 +140,7 @@ public class SelectionWindow extends NfxStage implements Initializable {
         manageServersBtn.setOnAction(e -> openServerManagement());
         manageProjectsBtn.setOnAction(e -> openProjectManagement());
         settingsBtn.setOnAction(e -> openSettings());
+        newWindowBtn.setOnAction(e -> openNewWindow());
     }
 
     private void updateStartButtonState() {
@@ -158,18 +162,14 @@ public class SelectionWindow extends NfxStage implements Initializable {
     }
 
     /**
-     * Creează DeploymentWindow, îi pasează referința la această fereastră
-     * (pentru navigare înapoi), o afișează, și ascunde SelectionWindow.
-     * <p>
-     * {@code this.close()} ascunde fereastra — DeploymentWindow o poate
-     * re-afișa prin {@code selectionWindow.show()} la "Change Project/Server".
+     * Creează DeploymentWindow, o afișează și închide această SelectionWindow.
+     * La "Change Project/Server", DeploymentWindow va crea o nouă SelectionWindow independentă.
      */
     private void openDeploymentWindow(Project project, Server server) {
         try {
             LOGGER.info("Opening deployment window with SFTP connection");
 
             DeploymentWindow deploymentWindow = new DeploymentWindow(project, server);
-            deploymentWindow.setSelectionWindow(this);
             deploymentWindow.show();
 
             this.close();
@@ -178,6 +178,16 @@ public class SelectionWindow extends NfxStage implements Initializable {
             LOGGER.log(Level.SEVERE, "Error opening deployment window", ex);
             CustomAlert.showError("Connection Error",
                     "Failed to open deployment window:\n" + ex.getMessage());
+        }
+    }
+
+    /** Deschide o nouă fereastră de selecție independentă, fără a afecta ferestrele existente. */
+    private void openNewWindow() {
+        try {
+            new SelectionWindow().show();
+        } catch (Exception ex) {
+            LOGGER.log(Level.SEVERE, "Error opening new window", ex);
+            CustomAlert.showError("Error", "Failed to open new window:\n" + ex.getMessage());
         }
     }
 
