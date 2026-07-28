@@ -5,7 +5,7 @@ public final class Constants {
     private Constants() {}
 
     // WINDOW
-    public static final String WINDOW_TITLE = "La Pila & La Ciocan";
+    public static final String WINDOW_TITLE = "La Pila";
     public static final String WINDOW_TITLE_PREFIX = "Deployment Manager - ";
     public static final double TITLE_BAR_HEIGHT = 40.0;
 

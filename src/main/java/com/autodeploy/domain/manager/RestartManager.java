@@ -63,6 +63,10 @@ public class RestartManager {
         return parseStatusResponse(output);
     }
 
+    public Server getServer() {
+        return server;
+    }
+
     public RestartStatus requestRestart(String projectName) throws Exception {
         String safeProjectName = sanitize(projectName);
         String command = String.format("%s %s request \"%s\"",

@@ -98,7 +98,7 @@ public class DeploymentSessionTab extends SessionTab implements Initializable {
         this.server = server;
         this.tabManager = tabManager;
         this.ownerStage = ownerStage;
-        setDisplayName(project.getName() + " @ " + server.getName());
+        setDisplayName(server.getName());
 
         try {
             VBox contentVBox = (VBox) Assets.loadFxml("/fxml/deployment-tab-content.fxml", this);

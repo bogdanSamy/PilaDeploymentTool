@@ -128,11 +128,11 @@ public class NotificationController extends AbstractNfxUndecoratedWindow impleme
      * User-ul trebuie să apese "Reject" sau să închidă manual.
      * Folosește dimensiuni mai mari pentru a sublinia urgența.
      */
-    public void showRestartServerNotification(String message, Runnable onButtonClick) {
+    public void showRestartServerNotification(String serverName,String message, Runnable onButtonClick) {
         setMessageVisible(true);
         setActionButton("Reject", onButtonClick);
 
-        show("Restart Server", message, "important", WIDTH_LARGE, HEIGHT_LARGE, false);
+        show(String.format("Restart request on %s!", serverName), message, "important", WIDTH_LARGE, HEIGHT_LARGE, false);
     }
 
     /**

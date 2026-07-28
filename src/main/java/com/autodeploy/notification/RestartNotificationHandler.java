@@ -158,14 +158,15 @@ public class RestartNotificationHandler {
 
         boolean isRequester = currentUsername.equals(status.getRequester());
         String project = getProjectName(status);
+        String server = getServerName();
 
         Platform.runLater(() -> {
             activeNotification = new NotificationController();
 
             if (isRequester) {
                 String title = isOverride
-                        ? "🔄 Restart Override Sent"
-                        : "🔄 Restart Request Sent";
+                        ? String.format("🔄 Restart Override Sent - %s", server)
+                        : String.format("🔄 Restart Request Sent - %s", server);
                 String message = isOverride
                         ? String.format("New restart request for: %s\nPrevious request replaced.\nAuto-approve in: %ss",
                         project, status.getTimeRemaining())
@@ -182,6 +183,7 @@ public class RestartNotificationHandler {
                         requester, project);
 
                 activeNotification.showRestartServerNotification(
+                        getServerName(),
                         message,
                         () -> executeReject(status));
 
@@ -218,13 +220,13 @@ public class RestartNotificationHandler {
 
             if (isRequester) {
                 activeNotification.showSimpleNotification(
-                        "🚫 Restart Rejected",
+                        String.format("🚫 Restart Rejected on - %s", getServerName()),
                         "Your restart request on " + project + " was rejected by " + rejector);
                 logger.accept("🚫 Restart request rejected by " + rejector);
             } else {
                 String requester = status.getRequester() != null ? status.getRequester() : "unknown";
                 activeNotification.showSimpleNotification(
-                        "🚫 Restart Rejected",
+                        String.format("🚫 Restart Rejected on - %s", getServerName()),
                         rejector + " declined the " + project
                                 + " server restart initiated by " + requester);
                 logger.accept("🚫 " + rejector + " rejected restart from " + requester);
@@ -246,8 +248,8 @@ public class RestartNotificationHandler {
         Platform.runLater(() -> {
             activeNotification = new NotificationController();
             activeNotification.showSimpleNotification(
-                    "🔄 The Server is Restarting",
-                    "Target: " + project + " - initiated by: " + requester);
+                    String.format("🔄 The Server %s is Restarting", getServerName()),
+                    "Target: " + project + "- initiated by: " + requester);
         });
         logger.accept("🔄 " + project + " is restarting - initiated by " + requester);
     }
@@ -261,7 +263,7 @@ public class RestartNotificationHandler {
         Platform.runLater(() -> {
             activeNotification = new NotificationController();
             activeNotification.showSimpleNotification(
-                    "✅ Restart Completed",
+                    String.format("✅ Restart on %s Completed", getServerName()),
                     "The restart finished successfully.\nGood job, " + requester + "!");
         });
 
@@ -333,5 +335,10 @@ public class RestartNotificationHandler {
         String project = status.getProject();
         return (project == null || project.trim().isEmpty() || "null".equals(project))
                 ? "Unknown Project" : project;
+    }
+
+    private String getServerName() {
+        String name = restartManager.getServer() != null ? restartManager.getServer().getName() : null;
+        return (name == null || name.trim().isEmpty()) ? "Unknown Server" : name;
     }
 }
