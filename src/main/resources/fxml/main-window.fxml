@@ -32,7 +32,7 @@
             <!-- Tab strip: chip-urile tab-urilor sunt adăugate dinamic de MainWindow -->
             <HBox fx:id="tabStripBox" alignment="CENTER_LEFT" spacing="4" />
             <!-- New Tab button — înregistrat ca client area în MainWindow.initialize() -->
-            <MFXButton fx:id="newTabBtn" text="➕ New Tab"
+            <MFXButton fx:id="newTabBtn" text="➕"
                        styleClass="new-window-btn" prefHeight="28.0" />
         </HBox>
 

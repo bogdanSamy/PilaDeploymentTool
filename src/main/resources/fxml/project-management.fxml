@@ -213,7 +213,6 @@
                                 </VBox>
 
                                 <!-- Ant Command (MAIN - editabil și salvat) -->
-                                <!-- Ant Command (MAIN - editabil și salvat) -->
                                 <VBox spacing="6.0">
                                     <children>
                                         <HBox spacing="8" alignment="CENTER_LEFT">

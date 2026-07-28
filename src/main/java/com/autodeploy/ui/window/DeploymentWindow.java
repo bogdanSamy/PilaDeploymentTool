@@ -210,7 +210,7 @@ public class DeploymentWindow extends NfxStage implements Initializable {
      *                 │                      └→ restartHandler
      *                 └→ restartHandler
      * </pre>
-     * La final, inițiază conexiunea — afișează overlay-ul de loading.
+     * La final,  conexiunea —inițiază afișează overlay-ul de loading.
      */
     private void lateInit() {
         ConnectionManager connectionManager = new ConnectionManager(server, logPanel::log);
