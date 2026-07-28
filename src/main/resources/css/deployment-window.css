@@ -33,16 +33,18 @@
     -fx-fill: white;
 }
 
-.minimize-btn:hover,
-.maximize-btn:hover {
+/* Pentru controalele NFX undecorated folosim pseudo-class-urile ht-* în loc de
+   :hover, altfel JavaFX și NFX alternează starea de hover și produc flicker. */
+.minimize-btn:ht-min,
+.maximize-btn:ht-max {
     -fx-background-color: rgba(255, 255, 255, 0.1);
 }
 
-.close-btn:hover {
+.close-btn:ht-close {
     -fx-background-color: #C42B1C;
 }
 
-.close-btn:hover .shape {
+.close-btn:ht-close .shape {
     -fx-fill: white;
 }
 
